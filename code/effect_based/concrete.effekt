@@ -1,0 +1,213 @@
+module concrete
+
+import interp
+import pyconv
+import syntax
+
+import io/error
+import io/filesystem
+import json
+import map
+import scanner
+
+def match_to_fold{prog: => Val / {Elimination}}: Val /
+  {
+    varI[Val],
+    asgnI[Val],
+    plusI[Val],
+    minusI[Val],
+    notI[Val],
+    eqI[Val],
+    ltI[Val],
+    gtI[Val],
+    leI[Val],
+    geI[Val]
+  } = {
+  try {
+    prog()
+  }
+  with Elimination {
+    def varE(x) = {
+      do varI(x)
+    }
+    def asgnE(x, v) = {
+      do asgnI(x, resume(v))
+    }
+    def plusE(e1, e2) = {
+      do plusI(resume(e1), resume(e2))
+    }
+    def minusE(e1, e2) = {
+      do minusI(resume(e1), resume(e2))
+    }
+    def notE(b) = {
+      do notI(resume(b))
+    }
+    def eqE(e1, e2) = {
+      do eqI(resume(e1), resume(e2))
+    }
+    def ltE(e1, e2) = {
+      do ltI(resume(e1), resume(e2))
+    }
+    def gtE(e1, e2) = {
+      do gtI(resume(e1), resume(e2))
+    }
+    def leE(e1, e2) = {
+      do leI(resume(e1), resume(e2))
+    }
+    def geE(e1, e2) = {
+      do geI(resume(e1), resume(e2))
+    }
+    def ifE(g, t, f) = resume(g) match {
+      case B(true) => resume(t)
+      case B(false) => resume(f)
+      case I(_) => resume(f)
+      case U() => resume(f)
+    }
+    def whileE(g, b) = resume(g) match {
+      // case B(true) => resume(Seq(b, While(g,b)))
+      case B(true) => {resume(b); resume(While(g,b))} // neat
+      case B(False) => resume(Unit())
+      case I(_) => resume(Unit())
+      case U() => resume(Unit())
+    }
+    def seqE(e1, e2) = {
+      resume(e1)
+      resume(e2)
+    }
+  }
+}
+
+// non relational state handler
+def stateH(init: Map[String, Val])
+  {prog: => Val / {varI[Val], asgnI[Val]}}: Val = 
+  var st: Map[String, Val] = init
+  try prog()
+  with varI[Val] {
+    def varI(n: String) =
+      map::get[String, Val](st, n) match {
+        case Some(v) => resume(v)
+        case None() => resume(U())
+      }
+  }
+  with asgnI[Val] {
+    def asgnI(n: String, v: Val) = {
+      st = st.put(n, v)
+      resume(U())
+    }
+  }
+
+
+// substantiated eval
+def run(e: Expr, init: Map[String, Val]): Val = {
+  try {
+    with stateH(init)
+    with match_to_fold()
+    eval(e)
+  }
+  with intI[Val] {
+    def intI(i) = resume(I(i))
+  }
+  with boolI[Val] {
+    def boolI(b) = resume(B(b))
+  }
+  with unitI[Val] {
+    def unitI() = resume(U())
+  }
+  with plusI[Val] {
+    def plusI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(I(i1 + i2))
+        case _ => resume(U())
+      }
+  }
+  with minusI[Val] {
+    def minusI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(I(i1 - i2))
+        case _ => resume(U())
+      }
+  }
+  with notI[Val] {
+    def notI(d) =
+      d match {
+        case B(true) => resume(B(false))
+        case B(false) => resume(B(true))
+        case _ => resume(U())
+      }
+  }
+  with eqI[Val] {
+    def eqI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 == i2))
+        case (B(b1), B(b2)) => resume(B(b1 == b2))
+        case _ => resume(B(false))
+      }
+  }
+  with ltI[Val] {
+    def ltI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 < i2))
+        case (B(b1), B(b2)) => resume(B(false))
+        case _ => resume(B(false))
+      }
+  }
+  with gtI[Val] {
+    def gtI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 > i2))
+        case (B(b1), B(b2)) => resume(B(false))
+        case _ => resume(B(false))
+      }
+  }
+  with leI[Val] {
+    def leI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 <= i2))
+        case (B(b1), B(b2)) => resume(B(false))
+        case _ => resume(B(false))
+      }
+  }
+  with geI[Val] {
+    def geI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 >= i2))
+        case (B(b1), B(b2)) => resume(B(false))
+        case _ => resume(B(false))
+      }
+  }
+}
+
+namespace test {
+  def main() = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val init: Map[String, Val] = map::empty(box compareStringBytes)
+
+    // basic arith
+    val arithJson: String = filesystem::readFile("tests/testArith.json")
+    feed(arithJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val arithExpr = pythonAstToExpr(jsonVal)
+      println(run(arithExpr, init))
+    }
+
+    // basic if
+    val ifJson: String = filesystem::readFile("tests/testIf.json")
+    feed(ifJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val ifExpr = pythonAstToExpr(jsonVal)
+      println(run(ifExpr, init))
+    }
+
+    // basic assign
+    val asgnJson: String = filesystem::readFile("tests/testAssgn.json")
+    feed(asgnJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val asgnExpr = pythonAstToExpr(jsonVal)
+      println(run(asgnExpr, init))
+    }
+  }
+}

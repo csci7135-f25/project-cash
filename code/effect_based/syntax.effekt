@@ -1,0 +1,40 @@
+type Val {
+  I(i: Int)
+  B(b: Bool)
+  U()
+}
+
+def println(v: Val) = v match {
+  case I(i) => {
+    val s = "Int(" ++ show(i) ++ ")"
+    println(s)
+  }
+  case B(b) => {
+    val s = "Bool(" ++ show(b) ++ ")"
+    println(s)
+  }
+  case U() => println("()")
+}
+
+// type Syntax <- elim effects act on this
+
+// type Stmt
+
+type Expr {
+  Num(i: Int)
+  Boolean(b: Bool)
+  Unit()
+  Var(x: String)
+  Asgn(x: String, v: Expr)
+  Plus(e1: Expr, e2: Expr)
+  Minus(e1: Expr, e2: Expr)
+  Not(e: Expr)
+  Eq(e1: Expr, e2: Expr)
+  Lt(e1: Expr, e2: Expr)
+  Gt(e1: Expr, e2: Expr)
+  Le(e1: Expr, e2: Expr)
+  Ge(e1: Expr, e2: Expr)
+  If(g: Expr, t: Expr, f: Expr)
+  While(g: Expr, b: Expr)
+  Seq(e1: Expr, e2: Expr)
+}

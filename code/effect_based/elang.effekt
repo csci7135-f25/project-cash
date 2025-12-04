@@ -1,0 +1,269 @@
+module elang 
+import map
+
+// concrete values
+type Val {
+  I(i: Int)
+  B(b: Bool)
+  U()
+}
+
+// pretty printing
+def println(v: Val) = v match {
+  case I(i) => {
+    val s = "Int(" ++ show(i) ++ ")"
+    println(s)
+  }
+  case B(b) => {
+    val s = "Bool(" ++ show(b) ++ ")"
+    println(s)
+  }
+  case U() => println("()")
+}
+
+// language syntax
+type Expr {
+  Num(i: Int)
+  Bool(b: Bool)
+  Unit()
+  Var(x: String)
+  Asgn(x: String, v: Expr)
+  Plus(e1: Expr, e2: Expr)
+  Minus(e1: Expr, e2: Expr)
+  Not(e: Expr)
+  Eq(e1: Expr, e2: Expr)
+  If(g: Expr, t: Expr, f: Expr)
+  While(g: Expr, b: Expr)
+  Seq(e1: Expr, e2: Expr)
+  // Ref(expr: Expr)
+  // Deref(expr: Expr)
+}
+
+// introduction beta effects
+effect intI[D](i: Int): D
+effect boolI[D](i: Bool): D
+effect unitI[D](): D
+
+// introduction effects
+effect varI[D](e1: String): D
+effect asgnI[D](x: String, v: D): D
+effect plusI[D](d1: D, d2: D): D
+effect minusI[D](e1: D, e2: D): D
+effect eqI[D](e1: D, e2: D): D
+effect notI[D](e: D): D
+effect ifI[D](g: D, t: Expr, f: Expr): D
+effect whileI[D](g: D, b: D): D
+effect seqI[D](e1: D, e2: D): D
+// lowering effects
+effect assume[D](guard: D, e: D): D
+effect assumeNot[D](guard: D, e: D): D
+  
+// elimination effects
+interface Elimination {
+  def plusE(e1: Expr, e2: Expr): Expr
+  def minusE(e1: Expr, e2: Expr): Expr
+  def eqE(e1: Expr, e2: Expr): Expr
+  def notE(e: Expr): Expr
+  def varE(x: String): Expr
+  def asgnE(x: String, v: Expr): Expr
+  def ifE(g: Expr, t: Expr, f: Expr): Expr
+  def whileE(g: Expr, b: Expr): Expr
+  def seqE(e1: Expr, e2: Expr): Expr
+}
+
+
+
+// unsubstantiated eval
+def eval[D](e: Expr): D /
+  {
+    intI[D],
+    boolI[D],
+    unitI[D],
+    varI[D],
+    Elimination
+  } = e match {
+    case Num(i) => do intI(i)
+    case Bool(b) => do boolI(b)
+    case Unit() => do unitI()
+    case Plus(e1, e2) => eval(do plusE(e1, e2))
+    case Minus(e1, e2) => eval(do minusE(e1, e2))
+    case Not(e) => eval(do notE(e))
+    case Eq(e1, e2) => eval(do eqE(e1, e2))
+    case Var(x) => do varI(x)
+    case Asgn(x, v) => eval(do asgnE(x,v))
+    case If(g, t, f) => eval(do ifE(g,t,f))
+    case While(g, b) => eval(do whileE(g, b))
+    case Seq(e1, e2) => eval(do seqE(e1, e2))
+  }
+
+def match_to_fold{prog: => Val / {Elimination}}: Val /
+  {
+    plusI[Val],
+    minusI[Val],
+    eqI[Val],
+    notI[Val],
+    varI[Val],
+    asgnI[Val]
+  } = {
+  try {
+    prog()
+  }
+  with Elimination {
+    def plusE(e1, e2) = {
+      do plusI(resume(e1), resume(e2))
+    }
+    def minusE(e1, e2) = {
+      do minusI(resume(e1), resume(e2))
+    }
+    def notE(b) = {
+      do notI(resume(b))
+    }
+    def eqE(e1, e2) = {
+      do eqI(resume(e1), resume(e2))
+    }
+    def varE(x) = {
+      do varI(x)
+    }
+    def asgnE(x, v) = {
+      do asgnI(x, resume(v))
+    }
+    def ifE(g, t, f) = resume(g) match {
+      case B(true) => resume(t)
+      case B(false) => resume(f)
+      case I(_) => resume(f)
+      case U() => resume(f)
+    }
+    def whileE(g, b) = resume(g) match {
+      // case B(true) => resume(Seq(b, While(g,b)))
+      case B(true) => {resume(b); resume(While(g,b))} // neat
+      case B(False) => resume(Unit())
+      case I(_) => resume(Unit())
+      case U() => resume(Unit())
+    }
+    def seqE(e1, e2) = {
+      resume(e1)
+      resume(e2)
+    }
+  }
+}
+
+// non relational state handler
+def stateH(init: Map[String, Val])
+  {prog: => Val / {varI[Val], asgnI[Val]}}: Val = 
+  var st: Map[String, Val] = init
+  try prog()
+  with varI[Val] {
+    def varI(n: String) =
+      map::get[String, Val](st, n) match {
+        case Some(v) => resume(v)
+        case None() => resume(U())
+      }
+  }
+  with asgnI[Val] {
+    def asgnI(n: String, v: Val) = {
+      st = st.put(n, v)
+      resume(U())
+    }
+  }
+
+
+// substantiated eval
+def runConcrete(e: Expr, init: Map[String, Val]): Val = {
+  try {
+    with stateH(init)
+    with match_to_fold()
+    eval(e)
+  }
+  with intI[Val] {
+    def intI(i) = resume(I(i))
+  }
+  with boolI[Val] {
+    def boolI(b) = resume(B(b))
+  }
+  with unitI[Val] {
+    def unitI() = resume(U())
+  }
+  with plusI[Val] {
+    def plusI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(I(i1 + i2))
+        case _ => resume(U())
+      }
+  }
+  with minusI[Val] {
+    def minusI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(I(i1 - i2))
+        case _ => resume(U())
+      }
+  }
+  with notI[Val] {
+    def notI(d) =
+      d match {
+        case B(true) => resume(B(false))
+        case B(false) => resume(B(true))
+        case _ => resume(U())
+      }
+  }
+  with eqI[Val] {
+    def eqI(d1, d2) =
+      (d1, d2) match {
+        case (I(i1), I(i2)) => resume(B(i1 == i2))
+        case (B(b1), B(b2)) => resume(B(b1 == b2))
+        case _ => resume(B(false))
+      }
+  }
+}
+
+def main() = {
+  // empty state
+  val init: Map[String, Val] = map::empty(box compareStringBytes)
+
+  // return type from assignment
+  val asgnEx = Var("x")
+  // simple expression
+  val addEx = Seq(Minus(Num(4), Num(3)), Plus(Num(2), Num(4)))
+  // performance test
+  val perfEx = Seq(
+    Asgn("x", Num(0)),
+    Seq(
+      While(
+        Not(Eq(Var("x"), Num(10000))),
+        Asgn("x", Plus(Var("x"), Num(1)))
+      ),
+      If(Eq(Var("x"), Num(10000)), Bool(true), Plus(Num(1), Num(55)))
+    )
+  )
+  // program from "evan" koka file
+  val ifProg =  Minus(
+    If(Not(Eq(Num(0), Plus(Num(3), Num(2)))), Plus(Num(10), Minus(Num(8), Num(3))), Num(0)),
+    If(Not(Eq(Num(0), Minus(Num(7), Num(7)))), Num(100), Plus(Num(2), Num(3)))
+  )
+
+  // old program from "chai"
+  val oldProg = Seq(
+    Seq(
+      Asgn("x", Plus(Var("y"), Num(3))),      // x:= y + 3
+      While(Not(Eq(Var("y"), Num(10))),       // while (! y == 10)
+        Asgn("y", Plus(Var("y"), Num(1)))     //   y:= y + 1
+      )
+    ),
+    Seq(
+      If(Eq(Var("x"), (Num(9))),              // if (x == 9)
+        Asgn("z", (Num(42))),                 //   z:= 42
+        If(Eq(Var("y"), (Num(8))),            // else if (y == 8)
+          Asgn("z", Plus(Var("x"), Num(3))),  //   z:= x + 3
+          Asgn("z", Minus(Num(22), Num(11)))  // else z:= 22 - 11
+        )
+      ),
+      Var("z")
+    )
+  )
+
+  println(runConcrete(asgnEx, init))
+  println(runConcrete(addEx, init))
+  println(runConcrete(perfEx, init))
+  println(runConcrete(ifProg, init))
+  println(runConcrete(oldProg, init.put("y", I(2))))
+  println("done")
+}

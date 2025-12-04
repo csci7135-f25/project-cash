@@ -1,0 +1,274 @@
+module pyconv
+
+import syntax
+
+import json
+import scanner
+import io/filesystem
+import io/error
+
+
+def parseExpr(): Expr / {Scan[Char], Exception[WrongFormat]} = {
+  val (_, jsonVal) = build { decodeJson() }
+  jsonValueToExpr(jsonVal)
+}
+
+def jsonValueToExpr(jsonVal: JsonValue): Expr = jsonVal match {
+  case Dict(els) =>
+    val exprType = els.filter { case (k, _) => k == "type" }.headOption() match {
+      case Some((_, String(t))) => t
+      case _ => "Unknown"
+    }
+    exprFromJson(exprType, els)
+  case _ => Unit()
+}
+
+def exprFromJson(exprType: String, fields: List[(String, JsonValue)]): Expr = {
+  def getField(name: String): JsonValue = 
+    fields.filter { case (k, _) => k == name }.headOption() match {
+      case Some((_, v)) => v
+      case None() => Null()
+    }
+  
+  def jsonToExpr(v: JsonValue): Expr = v match {
+    case Number(n) => Num(n.toInt)
+    case Null() => Unit()
+    case String(s) => Var(s)
+    case List(_) => Unit()
+    case Dict(els) => 
+      val exprType = els.filter { case (k, _) => k == "type" }.headOption() match {
+        case Some((_, String(t))) => t
+        case _ => "Unknown"
+      }
+      exprFromJson(exprType, els)
+    case _ => Unit()
+  }
+  
+  exprType match {
+    case "Num" => 
+      val n = getField("i")
+      Num(n match { case Number(x) => x.toInt case _ => 0 })
+    case "Bool" => 
+      val b = getField("b")
+      val exprBool = b match { 
+        case Number(0.0) => false
+        case Number(1.0) => true
+        case _ => false 
+      }
+      Boolean(exprBool)
+    case "Unit" => Unit()
+    case "Var" => 
+      val x = getField("x")
+      Var(x match { case String(s) => s case _ => "" })
+    case "Asgn" =>
+      val x = getField("x")
+      val v = getField("v")
+      Asgn(
+        x match { case String(s) => s case _ => "" },
+        jsonToExpr(v)
+      )
+    case "Plus" =>
+      Plus(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Minus" =>
+      Minus(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Not" =>
+      Not(jsonToExpr(getField("e")))
+    case "Eq" =>
+      Eq(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Lt" =>
+      Lt(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Gt" =>
+      Gt(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Le" =>
+      Le(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "Ge" =>
+      Ge(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case "If" =>
+      If(jsonToExpr(getField("g")), jsonToExpr(getField("t")), jsonToExpr(getField("f")))
+    case "While" =>
+      While(jsonToExpr(getField("g")), jsonToExpr(getField("b")))
+    case "Seq" =>
+      Seq(jsonToExpr(getField("e1")), jsonToExpr(getField("e2")))
+    case _ => Unit()
+  }
+}
+
+def pythonAstToExpr(json: JsonValue): Expr = json match {
+  case Dict(fields) =>
+    def getField(name: String): JsonValue =
+      fields.filter { case (k, _) => k == name }.headOption() match {
+        case Some((_, v)) => v
+        case None() => Null()
+      }
+    
+    def statementsToExpr(stmts: List[JsonValue]): Expr = {
+      val init: Expr = Unit()
+      stmts.foldRight(init) { (stmt, acc) =>
+        acc match {
+          case Unit() => pythonAstToExpr(stmt)
+          case e => Seq(pythonAstToExpr(stmt), e)
+        }
+      }
+    }
+    
+    val nodeType = getField("type") match {
+      case String(t) => t
+      case _ => ""
+    }
+    
+    nodeType match {
+      case "Module" => 
+        getField("body") match {
+          case List(exprs) => 
+            statementsToExpr(exprs)
+          case _ => Unit()
+        }
+      
+      case "Expr" =>
+        pythonAstToExpr(getField("value"))
+      
+      case "Constant" =>
+        getField("value") match {
+          case Number(n) => Num(n.toInt)
+          case _ => Unit()
+        }
+      
+      case "BinOp" =>
+        val left = pythonAstToExpr(getField("left"))
+        val right = pythonAstToExpr(getField("right"))
+        val op = getField("op") match {
+          case Dict(opFields) =>
+            opFields.filter { case (k, _) => k == "type" }.headOption() match {
+              case Some((_, String(opType))) => opType
+              case _ => ""
+            }
+          case _ => ""
+        }
+        
+        op match {
+          case "Add" => Plus(left, right)
+          case "Sub" => Minus(left, right)
+          case _ => Unit()
+        }
+      
+      case "Compare" =>
+        val left = pythonAstToExpr(getField("left"))
+        getField("comparators") match {
+          case List(comparators) =>
+            comparators.headOption() match {
+              case Some(cmpRight) =>
+                val right = pythonAstToExpr(cmpRight)
+                getField("ops") match {
+                  case List(ops) =>
+                    ops.headOption() match {
+                      case Some(op) =>
+                        op match {
+                          case Dict(opFields) =>
+                            opFields.filter { case (k, _) => k == "type" }.headOption() match {
+                              case Some((_, String("Lt"))) => Lt(left, right)
+                              case Some((_, String("Gt"))) => Gt(left, right)
+                              case Some((_, String("Eq"))) => Eq(left, right)
+                              case Some((_, String("LtE"))) => Le(left, right)
+                              case Some((_, String("GtE"))) => Ge(left, right)
+                              case _ => Unit()
+                            }
+                          case _ => Unit()
+                        }
+                      case None() => Unit()
+                    }
+                  case _ => Unit()
+                }
+              case None() => Unit()
+            }
+          case _ => Unit()
+        }
+      
+      case "If" =>
+        val cond = pythonAstToExpr(getField("test"))
+        val thenBody = getField("body") match {
+          case List(stmts) =>
+            statementsToExpr(stmts)
+          case _ => Unit()
+        }
+        val elseBody = getField("orelse") match {
+          case List(stmts) =>
+            statementsToExpr(stmts)
+          case _ => Unit()
+        }
+        If(cond, thenBody, elseBody)
+      
+      case "Assign" =>
+        val targets = getField("targets") match {
+          case List(tgts) =>
+            tgts.headOption() match {
+              case Some(tgt) =>
+                tgt match {
+                  case Dict(nameFields) =>
+                    nameFields.filter { case (k, _) => k == "id" }.headOption() match {
+                      case Some((_, String(id))) => id
+                      case _ => ""
+                    }
+                  case _ => ""
+                }
+              case None() => ""
+            }
+          case _ => ""
+        }
+        val value = pythonAstToExpr(getField("value"))
+        Asgn(targets, value)
+      
+      case "Name" =>
+        getField("id") match {
+          case String(id) => Var(id)
+          case _ => Unit()
+        }
+      
+      case _ => Unit()
+    }
+  
+  case _ => Unit()
+}
+
+namespace tests {
+  def testArithParse(): Unit = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val jsonString = filesystem::readFile("tests/testArith.json")
+    feed(jsonString) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val expr = pythonAstToExpr(jsonVal)
+      inspect(expr)
+    }
+  }
+
+  def testAssgnParse(): Unit = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val jsonString = filesystem::readFile("tests/testAssgn.json")
+    feed(jsonString) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val expr = pythonAstToExpr(jsonVal)
+      inspect(expr)
+    }
+  }
+
+  def testIfParse(): Unit = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val jsonString = filesystem::readFile("tests/testIf.json")
+    feed(jsonString) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val expr = pythonAstToExpr(jsonVal)
+      inspect(expr)
+    }
+  }
+
+  def main() = {
+    testArithParse()
+    testAssgnParse()
+    testIfParse()
+  }
+}
