@@ -58,6 +58,12 @@ class γ (δ : Type) where
 
 class Join (State: Type) where
   join : State → State → State
+infix:50 " ⊔ " => Join.join
+
+class LatOrder (State : Type) where
+  leq : State → State → Bool
+
+infix:50 " ⊑ " => LatOrder.leq
 
 class Get (State δ : Type) where
   get : Ident → State → δ
@@ -70,3 +76,4 @@ class Assume (State δ : Type) where
 
 class Bottom (State : Type) where
   Bot : State
+macro "⊥" : term => `(Bottom.Bot)

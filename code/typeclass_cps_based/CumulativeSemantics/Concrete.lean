@@ -29,6 +29,9 @@ instance : BEq (ConcreteValue × ConcStore) where
     | (v1, ρ1), (v2, ρ2) =>
       v1 == v2 && ρ1 == ρ2
 
+instance : Bottom ConcreteValue where
+  Bot := .Bot
+
 instance : Bottom ConcStore where
   Bot := Std.HashMap.emptyWithCapacity 0
 
@@ -49,15 +52,15 @@ instance : γ ConcreteValue where
 instance [Bottom ConcStore]: Assume ConcStore ConcreteValue where
   assume v ρ := match v with
     | .Bool true => ρ
-    | .Bool false => Bottom.Bot
-    | .Bot => Bottom.Bot
-    | .Num n => if n !=0 then ρ else Bottom.Bot
-    | _ => Bottom.Bot
+    | .Bool false => ⊥
+    | .Bot => ⊥
+    | .Num n => if n !=0 then ρ else ⊥
+    | _ => ⊥
   assumef v ρ := match v with
     | .Bool false => ρ
-    | .Bool true => Bottom.Bot
-    | .Bot => Bottom.Bot
-    | .Num n => if n == 0 then ρ else Bottom.Bot
+    | .Bool true => ⊥
+    | .Bot => ⊥
+    | .Num n => if n == 0 then ρ else ⊥
     | _ => ρ
 
 instance [Bottom ConcStore]: Join ConcStore where
@@ -65,7 +68,21 @@ instance [Bottom ConcStore]: Join ConcStore where
     if ρ1.size == 0 then ρ2
     else if ρ2.size == 0 then ρ1
     else
-      Bottom.Bot
+      ⊥
+
+instance : LatOrder ConcreteValue where
+  leq v1 v2 := match v1, v2 with
+    | .Bot, _ => true
+    | _, .Top => true
+    | v1, v2 => v1 == v2
+
+instance : LatOrder ConcStore where
+  leq ρ1 ρ2 :=
+    ρ1.toList.all fun (k, v1) =>
+      match ρ2[k]? with
+      | some v2 => v1 ⊑ v2
+      | none => false
+
 
 -- instances of elim and intro handlers
 instance {State δ : Type} [CstI δ] : CstE State δ where
@@ -136,23 +153,23 @@ instance {State δ : Type} [Inhabited δ] [IfI State δ] [Assume State δ] : IfE
     (default, @IfI.if_ State δ _ ρ' tk fk)
 instance {State δ : Type}  [Join State] : IfI State δ where
   if_ ρ tk fk :=
-    Join.join (tk ρ) (fk ρ)
+    (tk ρ) ⊔ (fk ρ)
 
-partial def lfp {α : Type} (f : α → α) (x : α) [Bottom α] [BEq α] : α :=
+partial def lfp {α : Type} (f : α → α) (x : α) [Bottom α] [LatOrder α] : α :=
   let rec aux (current : α) :=
     let next := f current
-    if next == Bottom.Bot then current else
-    if next == current then current
+    if next ⊑ ⊥ then current else
+    if next ⊑ current then current
     else aux next
   aux x
 
-instance {State δ : Type} [BEq State] [Bottom State] [Assume State δ] [WhileI State δ] [Inhabited δ] : WhileE State δ where
+instance {State δ : Type} [Assume State δ] [WhileI State δ] [Inhabited δ] : WhileE State δ where
   while_ eval e body ρ:=
     let k : State → State := fun σ =>
       let (v, σ') := eval (.Exp e) σ
       Assume.assume v (eval (.Stm body) σ').snd
     (default, @WhileI.while_ State δ _ ρ k)
-instance{State δ: Type} [Bottom State] [BEq State]: WhileI State δ where
+instance{State δ: Type} [Bottom State] [LatOrder State]: WhileI State δ where
   while_ (ρ:State) cont := lfp cont ρ
 
 instance {State δ : Type} [Inhabited δ] [SeqI State δ] : SeqE State δ where
@@ -176,14 +193,14 @@ partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × Conc
       let (v1, ρ') := conc_eval_monolithic (.Exp e1) ρ
       let (v2, ρ'') := conc_eval_monolithic (.Exp e2) ρ'
       match (v1, v2, op) with
-        | (.Bot, _, _) => (.Bot, Bottom.Bot)
-        | (_, .Bot, _) => (.Bot, Bottom.Bot)
+        | (.Bot, _, _) => (.Bot, ⊥)
+        | (_, .Bot, _) => (.Bot, ⊥)
         | (.Top, _, _) => (.Top, ρ'')
         | (_, .Top, _) => (.Top, ρ'')
         | (.Num n1, .Num n2, Op.Plus) => (.Num (n1 + n2), ρ'')
         | (.Num n1, .Num n2, Op.Minus) => (.Num (n1 - n2), ρ'')
         | (.Num n1, .Num n2, Op.Times) => (.Num (n1 * n2), ρ'')
-        | (_, .Num 0, Op.Divide) => (.Bot, Bottom.Bot)
+        | (_, .Num 0, Op.Divide) => (.Bot, ⊥)
         | (.Num n1, .Num n2, Op.Divide) => (.Num (n1 / n2), ρ'')
         | (.Num n1, .Num n2, Op.Equals) => (.Bool (n1 == n2), ρ'')
         | (.Num n1, .Num n2, Op.Greater) => (.Bool (n1 > n2), ρ'')
@@ -194,11 +211,11 @@ partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × Conc
     | .Neg e =>
       let (v, ρ') := conc_eval_monolithic (.Exp e) ρ
       match v with
-        | .Bot => (.Bot, Bottom.Bot)
+        | .Bot => (.Bot, ⊥)
         | .Top => (.Top, ρ')
         | .Num n => (.Num (-n), ρ')
         | .Bool b => (.Bool (!b), ρ')
-        | _ => (.Bot, Bottom.Bot)
+        | _ => (.Bot, ⊥)
     | .NamedExpr x e =>
       let (v, ρ') := conc_eval_monolithic (.Exp e) ρ
       (v, ρ'.insert x v)
@@ -213,8 +230,8 @@ partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × Conc
       match v with
         | .Bool true => (.Unit, tρ)
         | .Bool false => (.Unit, fρ)
-        | .Bot => (.Unit, Bottom.Bot)
-        | _ => (.Unit, Bottom.Bot)
+        | .Bot => (.Unit, ⊥)
+        | _ => (.Unit, ⊥)
     | .Seq s1 s2 =>
       let (_, ρ') := conc_eval_monolithic (.Stm s1) ρ
       conc_eval_monolithic (.Stm s2) ρ'
@@ -225,9 +242,9 @@ partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × Conc
           let (_, bodyρ) := conc_eval_monolithic (.Stm body) ρ'
           conc_eval_monolithic (.Stm (.While e body)) bodyρ
         | .Bool false => (.Unit, ρ')
-        | .Bot => (.Unit, Bottom.Bot)
+        | .Bot => (.Unit, ⊥)
         | .Num n => if n != 0 then
             let (_, bodyρ) := conc_eval_monolithic (.Stm body) ρ'
             conc_eval_monolithic (.Stm (.While e body)) bodyρ
           else (.Unit, ρ')
-        | _ => (.Unit, Bottom.Bot)
+        | _ => (.Unit, ⊥)
