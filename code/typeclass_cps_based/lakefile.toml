@@ -1,0 +1,10 @@
+name = "CumulativeSemantics"
+version = "0.1.0"
+defaultTargets = ["cumulativesemantics"]
+
+[[lean_lib]]
+name = "CumulativeSemantics"
+
+[[lean_exe]]
+name = "cumulativesemantics"
+root = "Main"

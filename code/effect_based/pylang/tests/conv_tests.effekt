@@ -1,0 +1,49 @@
+module conv_tests
+
+import pyconv
+
+import io/error
+import io/filesystem
+import json
+import scanner
+
+def testArithParse(): Unit = {
+  with on[WrongFormat].panic
+  with on[IOError].panic
+  val jsonString = filesystem::readFile("testArith.json")
+  feed(jsonString) {
+    with scanner[Char]
+    val (_, jsonVal) = build { decodeJson() }
+    val expr = pythonAstToExpr(jsonVal)
+    inspect(expr)
+  }
+}
+
+def testAssgnParse(): Unit = {
+  with on[WrongFormat].panic
+  with on[IOError].panic
+  val jsonString = filesystem::readFile("testAssgn.json")
+  feed(jsonString) {
+    with scanner[Char]
+    val (_, jsonVal) = build { decodeJson() }
+    val expr = pythonAstToExpr(jsonVal)
+    inspect(expr)
+  }
+}
+def testIfParse(): Unit = {
+  with on[WrongFormat].panic
+  with on[IOError].panic
+  val jsonString = filesystem::readFile("testIf.json")
+  feed(jsonString) {
+    with scanner[Char]
+    val (_, jsonVal) = build { decodeJson() }
+    val expr = pythonAstToExpr(jsonVal)
+    inspect(expr)
+  }
+}
+
+def main() = {
+  testArithParse()
+  testAssgnParse()
+  testIfParse()
+}
