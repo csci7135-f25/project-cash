@@ -34,7 +34,7 @@ inductive Expr where
 inductive Stmt where
   | Assign: Ident → Expr → Stmt --state
   | If: Expr → Stmt → Stmt → Stmt --ctrl flow
-  | Seq: Stmt → Stmt → Stmt -- structure?
+  | Seq: Stmt → Stmt → Stmt -- ctrl flow
   | While: Expr → Stmt → Stmt --ctrl flow
 
 inductive Prog where

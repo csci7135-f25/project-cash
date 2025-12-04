@@ -128,39 +128,43 @@ instance {State δ : Type} [AssignI State δ] : AssignE State δ where
 instance {State δ : Type} [Inhabited δ] [Put State δ] : AssignI State δ where
   assign x v ρ := (default, Put.put x v ρ)
 
-instance {State δ : Type} [Inhabited δ] [IfI State δ] : IfE State δ where
+instance {State δ : Type} [Inhabited δ] [IfI State δ] [Assume State δ] : IfE State δ where
   if_ eval e t f ρ :=
     let (v, ρ') := eval (.Exp e) ρ
-    let (_, tρ) := eval (.Stm t) ρ'
-    let (_, fρ) := eval (.Stm f) ρ'
-    (default, IfI.if_ v tρ fρ)
-instance {State δ : Type} [Assume State δ] [Join State] : IfI State δ where
-  if_ v tρ fρ :=
-    let tρ' := Assume.assume v tρ
-    let fρ' := Assume.assumef v fρ
-    Join.join tρ' fρ'
+    let tk : State → State := λ σ => Assume.assume v (eval (.Stm t) σ).snd
+    let fk : State → State := λ σ => Assume.assumef v (eval (.Stm f) σ).snd
+    (default, @IfI.if_ State δ _ ρ' tk fk)
+instance {State δ : Type}  [Join State] : IfI State δ where
+  if_ ρ tk fk :=
+    Join.join (tk ρ) (fk ρ)
 
+partial def lfp {α : Type} (f : α → α) (x : α) [Bottom α] [BEq α] : α :=
+  let rec aux (current : α) :=
+    let next := f current
+    if next == Bottom.Bot then current else
+    if next == current then current
+    else aux next
+  aux x
 
-instance {State δ : Type} [BEq State] [Bottom State] [WhileI State δ] [Inhabited δ] : WhileE State δ where
-  while_ eval e body ρ :=
-    let (v, ρ') := eval (.Exp e) ρ
-    let (_, bodyρ) := eval (.Stm body) ρ'
-    let bodyρ' := WhileI.while_ v bodyρ
-    if(bodyρ' == Bottom.Bot) then
-      (default, ρ')
-    else
-      eval (.Stm (.While e body)) bodyρ'
-instance{State δ: Type} [Assume State δ]: WhileI State δ where
-  while_ v ρ := Assume.assume v ρ
+instance {State δ : Type} [BEq State] [Bottom State] [Assume State δ] [WhileI State δ] [Inhabited δ] : WhileE State δ where
+  while_ eval e body ρ:=
+    let k : State → State := fun σ =>
+      let (v, σ') := eval (.Exp e) σ
+      Assume.assume v (eval (.Stm body) σ').snd
+    (default, @WhileI.while_ State δ _ ρ k)
+instance{State δ: Type} [Bottom State] [BEq State]: WhileI State δ where
+  while_ (ρ:State) cont := lfp cont ρ
 
+instance {State δ : Type} [Inhabited δ] [SeqI State δ] : SeqE State δ where
+  seq eval s1 s2 ρ :=
+    let s1k : State → State := fun σ => (eval (.Stm s1) σ).snd
+    let s2k : State → State := fun σ => (eval (.Stm s2) σ).snd
+    (default, @SeqI.seq State δ _ ρ s1k s2k)
+instance {State δ : Type} [Join State] : SeqI State δ where
+  seq ρ s1k s2k :=
+    s2k (s1k ρ)
 
-def conc_eval : Prog → ConcStore → (ConcreteValue × ConcStore) :=
-let _ : SeqE ConcStore ConcreteValue :=
-  { seq  eval s1 s2 ρ :=
-      let (_, ρ') := eval (.Stm s1) ρ
-      eval (.Stm s2) ρ' }
-eval
-
+def conc_eval : Prog → ConcStore → (ConcreteValue × ConcStore) := eval
 
 partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × ConcStore)
   | .Exp e, ρ => match e with
