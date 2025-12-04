@@ -1,6 +1,6 @@
-module pyconv
+module pylang/pyconv
 
-import syntax
+import pylang/syntax
 
 import json
 import scanner

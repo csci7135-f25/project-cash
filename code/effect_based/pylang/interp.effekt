@@ -1,12 +1,12 @@
-module interp
+module pylang/interp
 
-import map
-import syntax
-import pyconv
+import pylang/syntax
+import pylang/pyconv
 
 import io/error
 import io/filesystem
 import json
+import map
 import scanner
 
 // introduction beta effects

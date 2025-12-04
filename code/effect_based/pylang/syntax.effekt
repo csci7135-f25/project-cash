@@ -1,3 +1,5 @@
+module pylang/syntax
+
 type Val {
   I(i: Int)
   B(b: Bool)

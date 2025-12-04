@@ -1,8 +1,8 @@
 module concrete
 
-import interp
-import pyconv
-import syntax
+import pylang/interp
+import pylang/pyconv
+import pylang/syntax
 
 import io/error
 import io/filesystem
@@ -184,7 +184,7 @@ namespace test {
     val init: Map[String, Val] = map::empty(box compareStringBytes)
 
     // basic arith
-    val arithJson: String = filesystem::readFile("tests/testArith.json")
+    val arithJson: String = filesystem::readFile("pylang/tests/testArith.json")
     feed(arithJson) {
       with scanner[Char]
       val (_, jsonVal) = build { decodeJson() }
@@ -193,7 +193,7 @@ namespace test {
     }
 
     // basic if
-    val ifJson: String = filesystem::readFile("tests/testIf.json")
+    val ifJson: String = filesystem::readFile("pylang/tests/testIf.json")
     feed(ifJson) {
       with scanner[Char]
       val (_, jsonVal) = build { decodeJson() }
@@ -202,7 +202,7 @@ namespace test {
     }
 
     // basic assign
-    val asgnJson: String = filesystem::readFile("tests/testAssgn.json")
+    val asgnJson: String = filesystem::readFile("pylang/tests/testAssgn.json")
     feed(asgnJson) {
       with scanner[Char]
       val (_, jsonVal) = build { decodeJson() }
