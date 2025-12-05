@@ -96,6 +96,37 @@
           "type_comment": null
         }
       ]
+    },
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "y",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "BinOp",
+        "left": {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Load"
+          }
+        },
+        "op": {
+          "type": "Add"
+        },
+        "right": {
+          "type": "Constant",
+          "value": 12,
+          "kind": null
+        }
+      },
+      "type_comment": null
     }
   ],
   "type_ignores": []

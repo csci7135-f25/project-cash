@@ -51,60 +51,70 @@ interface Elimination {
 }
 */
 
-type State[K,V] {
-  St(st: Map[K, V], e: V)
+// type State[D] {
+  // St(st: Map[String, D], e: D)
+// }
+type State[D] {
+  St(st: Map[String, D])
 }
 
+// type StateP[S] {
+  // St(s : S)
+// }
+
 // introduction beta effects
-effect intI[N,D](st: State[N,D], i: Int): (D, State[N,D])
-effect boolI[N,D](st: State[N,D], i: Bool): (D, State[N,D])
-effect unitI[N,D](st: State[N,D]): (D, State[N,D])
+effect intI[D](st: State[D], i: Int): (D, State[D])
+effect boolI[D](st: State[D], i: Bool): (D, State[D])
+effect unitI[D](st: State[D]): (D, State[D])
+// effect cstI[D](v: Val, st: State[D]): (D, State[D])
 
 // introduction effects
-effect varI[N,D](st: State[N,D], e1: String): (D, State[N,D])
-effect asgnI[N,D](st: State[N,D], x: String, v: D): (D, State[N,D])
-effect plusI[N,D](st: State[N,D], d1: D, d2: D): (D, State[N,D])
-effect minusI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect notI[N,D](st: State[N,D], e: D): (D, State[N,D])
-effect eqI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect ltI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect gtI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect leI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect geI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
-effect ifI[N,D](st: State[N,D], g: D, t: D, f: D): (D, State[N,D])
-effect whileI[N,D](st: State[N,D], g: D, b: D): (D, State[N,D])
-effect seqI[N,D](st: State[N,D], e1: D, e2: D): (D, State[N,D])
+effect varI[D](st: State[D], e1: String): (D, State[D])
+effect asgnI[D](st: State[D], x: String, v: D): (D, State[D])
+effect plusI[D](st: State[D], d1: D, d2: D): (D, State[D])
+effect minusI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect notI[D](st: State[D], e: D): (D, State[D])
+effect eqI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect ltI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect gtI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect leI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect geI[D](st: State[D], e1: D, e2: D): (D, State[D])
+// effect ifI[D](st: State[D], g: D, t: D, f: D): (D, State[D])
+effect ifI[D](stT: State[D], stF: State[D], g: D, t: D, f: D): (D, State[D])
+effect whileI[D](st: State[D], g: D, b: D): (D, State[D])
+effect seqI[D](st: State[D], e1: D, e2: D): (D, State[D])
 // lowering effects
-effect assume[N,D](st: State[N,D], guard: D, e: D): (D, State[N,D])
-effect assumeNot[N,D](st: State[N,D], guard: D, e: D): (D, State[N,D])
+effect assume[D](st: State[D], guard: D, e: D): (D, State[D])
+effect assumeNot[D](st: State[D], guard: D, e: D): (D, State[D])
   
 // elimination effects
-interface Elimination[N,D] {
-  def varE(st: State[N,D], x: N): (Prog, State[N,D])
-  def asgnE(st: State[N,D], x: N, v: Expr): (Prog, State[N,D])
-  def plusE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def minusE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def notE(st: State[N,D], e: Expr): (Prog, State[N,D])
-  def eqE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def ltE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def gtE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def leE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def geE(st: State[N,D], e1: Expr, e2: Expr): (Prog, State[N,D])
-  def ifE(st: State[N,D], g: Expr, t: Stmt, f: Stmt): (Prog, State[N,D])
-  def whileE(st: State[N,D], g: Expr, b: Stmt): (Prog, State[N,D])
-  def seqE(st: State[N,D], e1: Stmt, e2: Stmt): (Prog, State[N,D])
+interface Elimination[D] {
+  def varE(st: State[D], x: String): (Prog, State[D])
+  def asgnE(st: State[D], x: String, v: Expr): (Prog, State[D])
+  def plusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def minusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  // def cstE(st: State[D], v: Val): (D, State[D]) ???
+  def notE(st: State[D], e: Expr): (Prog, State[D])
+  def eqE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def ltE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def gtE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def leE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def geE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def ifE(st: State[D], g: Expr, t: Stmt, f: Stmt): (Prog, State[D])
+  def whileE(st: State[D], g: Expr, b: Stmt): (Prog, State[D])
+  def seqE(st: State[D], e1: Stmt, e2: Stmt): (Prog, State[D])
 }
 
 // unsubstantiated eval
 // need return (D, state)
-def eval[N, D](prog: (Prog, State[N,D])): (D, State[N,D]) /
+def eval[D](prog: (Prog, State[D])): (D, State[D]) /
   {
     // replace with E versions that directly call I handlers
-    intI[N,D],
-    boolI[N,D],
-    unitI[N,D],
-    varI[N,D],
-    Elimination[N,D]
+    intI[D],
+    boolI[D],
+    unitI[D],
+    varI[D],
+    Elimination[D]
   } = 
   val (e, st) = prog
   e match {

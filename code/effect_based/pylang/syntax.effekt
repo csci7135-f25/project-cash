@@ -19,6 +19,7 @@ def println(v: Val) = v match {
 }
 
 type Expr {
+  // Cst(v: Val)
   Num(i: Int)
   Boolean(b: Bool)
   Unit()
