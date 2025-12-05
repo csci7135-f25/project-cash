@@ -1,0 +1,50 @@
+{
+  "type": "Module",
+  "body": [
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "Constant",
+        "value": true,
+        "kind": null
+      },
+      "type_comment": null
+    },
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "y",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "UnaryOp",
+        "op": {
+          "type": "Not"
+        },
+        "operand": {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Load"
+          }
+        }
+      },
+      "type_comment": null
+    }
+  ],
+  "type_ignores": []
+}

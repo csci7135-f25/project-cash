@@ -7,6 +7,7 @@ if x > 5:
         z = 10
 else:
     y = 0
+
 while (y <= 10):
     x = x + 1
     y = y + x

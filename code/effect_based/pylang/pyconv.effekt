@@ -320,6 +320,8 @@ def stmtFromJson(stmtType: String, fields: List[(String, JsonValue)]): Stmt = {
   
   def jsonToExpr(v: JsonValue): Expr = v match {
     case Number(n) => Num(n.toInt)
+    // added
+    case Bool(b) => Boolean(b)
     case Null() => Unit()
     case String(s) => Var(s)
     case List(_) => Unit()
@@ -329,7 +331,7 @@ def stmtFromJson(stmtType: String, fields: List[(String, JsonValue)]): Stmt = {
         case _ => "Unknown"
       }
       exprFromJson(exprType, els)
-    case _ => Unit()
+    // case _ => Unit()
   }
   
   def jsonToStmt(v: JsonValue): Stmt = v match {
@@ -463,6 +465,7 @@ def pythonAstToProg(json: JsonValue): Prog = json match {
       case "Constant" =>
         getField("value") match {
           case Number(n) => E(Num(n.toInt))
+          case Bool(b)   => E(Boolean(b))   // <-- FIX
           case _ => E(Unit())
         }
       
@@ -654,10 +657,36 @@ namespace tests {
     }
   }
 
+  def testWhileParse(): Unit = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val jsonString = filesystem::readFile("pylang/tests/testWhile.json")
+    feed(jsonString) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val prog = pythonAstToProg(jsonVal)
+      inspect(prog)
+    }
+  }
+
+  def testNotParse(): Unit = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val jsonString = filesystem::readFile("pylang/tests/testNot.json")
+    feed(jsonString) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val prog = pythonAstToProg(jsonVal)
+      inspect(prog)
+    }
+  }
+
   def main() = {
     testArithParse()
+    testNotParse()
     testAssgnParse()
     testIfParse()
     testIfWhileParse()
+    testWhileParse()
   }
 }

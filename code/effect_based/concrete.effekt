@@ -10,217 +10,6 @@ import json
 import map
 import scanner
 
-/*
-def match_to_fold{prog: => Val / {Elimination}}: Val /
-// def match_to_fold{prog: => Val / {Elimination}}: (Val, Map[String,Val]) /
-  {
-    varI[Val],
-    asgnI[Val],
-    plusI[Val],
-    minusI[Val],
-    notI[Val],
-    eqI[Val],
-    ltI[Val],
-    gtI[Val],
-    leI[Val],
-    geI[Val],
-    ifI[Val]
-  } = {
-  try {
-    prog()
-  }
-  with Elimination {
-    def varE(x) = {
-      do varI(x)
-    }
-    def asgnE(x, v) = {
-      do asgnI(x, resume(v))
-    }
-    def plusE(e1, e2) = {
-      do plusI(resume(e1), resume(e2))
-    }
-    def minusE(e1, e2) = {
-      do minusI(resume(e1), resume(e2))
-    }
-    def notE(b) = {
-      do notI(resume(b))
-    }
-    def eqE(e1, e2) = {
-      do eqI(resume(e1), resume(e2))
-    }
-    def ltE(e1, e2) = {
-      do ltI(resume(e1), resume(e2))
-    }
-    def gtE(e1, e2) = {
-      do gtI(resume(e1), resume(e2))
-    }
-    def leE(e1, e2) = {
-      do leI(resume(e1), resume(e2))
-    }
-    def geE(e1, e2) = {
-      do geI(resume(e1), resume(e2))
-    }
-    def ifE(g, t, f) = {
-      // ifI(resume(g), resume(t), resume(f))
-      resume(g) match {
-        case B(true) => resume(t)
-        case B(false) => resume(f)
-        case I(_) => resume(f)
-        case U() => resume(f)
-      }
-    }
-    def whileE(g, b) = resume(g) match {
-      // case B(true) => resume(Seq(b, While(g,b)))
-      case B(true) => {resume(b); resume(While(g,b))} // neat
-      case B(False) => resume(Unit())
-      case I(_) => resume(Unit())
-      case U() => resume(Unit())
-    }
-    def seqE(e1, e2) = {
-      resume(e1)
-      resume(e2)
-    }
-  }
-}
-
-// non relational state handler
-def stateH(init: Map[String, Val])
-  {prog: => Val / {varI[Val], asgnI[Val]}}: Val = 
-  var st: Map[String, Val] = init
-  try prog()
-  with varI[Val] {
-    def varI(n: String) =
-      map::get[String, Val](st, n) match {
-        case Some(v) => resume(v)
-        case None() => resume(U())
-      }
-  }
-  with asgnI[Val] {
-    def asgnI(n: String, v: Val) = {
-      st = st.put(n, v)
-      resume(U())
-    }
-  }
-
-
-// substantiated eval
-// maybe this can return state directly
-def run(e: Expr, init: Map[String, Val]): Val = {
-  try {
-    with stateH(init)
-    with match_to_fold()
-    eval(e)
-  }
-  with intI[Val] {
-    def intI(i) = resume(I(i))
-  }
-  with boolI[Val] {
-    def boolI(b) = resume(B(b))
-  }
-  with unitI[Val] {
-    def unitI() = resume(U())
-  }
-  with plusI[Val] {
-    def plusI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(I(i1 + i2))
-        case _ => resume(U())
-      }
-  }
-  with minusI[Val] {
-    def minusI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(I(i1 - i2))
-        case _ => resume(U())
-      }
-  }
-  with notI[Val] {
-    def notI(d) =
-      d match {
-        case B(true) => resume(B(false))
-        case B(false) => resume(B(true))
-        case _ => resume(U())
-      }
-  }
-  with eqI[Val] {
-    def eqI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(B(i1 == i2))
-        case (B(b1), B(b2)) => resume(B(b1 == b2))
-        case _ => resume(B(false))
-      }
-  }
-  with ltI[Val] {
-    def ltI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(B(i1 < i2))
-        case (B(b1), B(b2)) => resume(B(false))
-        case _ => resume(B(false))
-      }
-  }
-  with gtI[Val] {
-    def gtI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(B(i1 > i2))
-        case (B(b1), B(b2)) => resume(B(false))
-        case _ => resume(B(false))
-      }
-  }
-  with leI[Val] {
-    def leI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(B(i1 <= i2))
-        case (B(b1), B(b2)) => resume(B(false))
-        case _ => resume(B(false))
-      }
-  }
-  with geI[Val] {
-    def geI(d1, d2) =
-      (d1, d2) match {
-        case (I(i1), I(i2)) => resume(B(i1 >= i2))
-        case (B(b1), B(b2)) => resume(B(false))
-        case _ => resume(B(false))
-      }
-  }
-}
-
-namespace test {
-  def main() = {
-    with on[WrongFormat].panic
-    with on[IOError].panic
-    val init: Map[String, Val] = map::empty(box compareStringBytes)
-
-    // basic arith
-    val arithJson: String = filesystem::readFile("pylang/tests/testArith.json")
-    feed(arithJson) {
-      with scanner[Char]
-      val (_, jsonVal) = build { decodeJson() }
-      val arithExpr = pythonAstToExpr(jsonVal)
-      println(run(arithExpr, init))
-    }
-
-    // basic if
-    val ifJson: String = filesystem::readFile("pylang/tests/testIf.json")
-    feed(ifJson) {
-      with scanner[Char]
-      val (_, jsonVal) = build { decodeJson() }
-      val ifExpr = pythonAstToExpr(jsonVal)
-      println(run(ifExpr, init))
-    }
-
-    // basic assign
-    val asgnJson: String = filesystem::readFile("pylang/tests/testAssgn.json")
-    feed(asgnJson) {
-      with scanner[Char]
-      val (_, jsonVal) = build { decodeJson() }
-      val asgnExpr = pythonAstToExpr(jsonVal)
-      println(run(asgnExpr, init))
-    }
-  }
-}
-*/
-
-// State operations (effects used by the concrete state handler)
 effect get(st: State[Val], x: String): Val
 effect update(st: State[Val], x: String, v: Val): State[Val]
 
@@ -240,8 +29,8 @@ def match_to_fold
     gtI[Val],
     leI[Val],
     geI[Val],
-    ifI[Val]
-    // whileI[Val],
+    ifI[Val],
+    whileI[Val]
     // seqI[Val],
   } =
 {
@@ -309,20 +98,25 @@ def match_to_fold
       val (guardVal, st1) = resume((E(guardExpr), st))
       val (thenRes, st2) = resume((S(thenStmt), st1)) // cont
       val (elseRes, st3) = resume((S(elseStmt), st1)) // cont
-      // do ifI(st1, guardVal, thenRes, elseRes)
       do ifI(st2, st3, guardVal, thenRes, elseRes)
     }
 
     def whileE(st, guardExpr, bodyStmt) = {
       val (guardVal, st1) = resume((E(guardExpr), st))
-      guardVal match {
-        case B(true) => {
-          val (_, st2) = resume((S(bodyStmt), st1))
-          resume((S(While(guardExpr, bodyStmt)), st2))
-        }
-        case B(false) => do unitI(st1)
-        case _ => do unitI(st1)
+      val (bodyVal, st2) = resume((S(bodyStmt), st1))
+      val (wV, wS) = do whileI(st1, st2, guardVal, bodyVal)
+      wV match {
+        case B(true) => resume((S(While(guardExpr, bodyStmt)), st2))
+        case _ => resume((E(Unit()), st1))
       }
+      /*
+      resume((E(guardExpr), st)) match {
+        case (B(true), st1) => {resume((S(Seq(bodyStmt, While(guardExpr, bodyStmt))), st1))}
+        case (B(False), st1) => resume((E(Unit()), st))
+        case (I(_), st1) => resume((E(Unit()), st))
+        case (U(), st1) => resume((E(Unit()), st)) 
+      }
+      */
     }
 
     def seqE(st, s1, s2) = {
@@ -433,6 +227,13 @@ def run(prog: Prog, init: State[Val]): (Val, State[Val]) = {
       case _ => resume((U(), stF))
     }
   }
+  with whileI[Val] {(stG, stB, g, b) =>
+    g match {
+      case B(true) => resume((g, stG))
+      case B(false) => resume((g, stB))
+      case _ => resume((U(), stG))
+    }
+  }
 }
 
 namespace test {
@@ -478,6 +279,41 @@ namespace test {
       println("--basic assign--")
       m.foreach { (k,v) => println(k); println(v)}
       println("----------------")
+    }
+
+    // basic assign
+    val whileJson: String = filesystem::readFile("pylang/tests/testWhile.json")
+    feed(whileJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val whileProg = pythonAstToProg(jsonVal)
+      val (_, s) = run(whileProg, St(init))
+      val m = s match {case St(a) => a}
+      println("--basic while--")
+      m.foreach { (k,v) => println(k); println(v)}
+      println("----------------")
+    }
+
+    // basic not
+    val notProg = S(Seq(Asgn("x", Boolean(false)), Asgn("y", Not(Var("x")))))
+    val (_, s) = run(notProg, St(init))
+    val m = s match {case St(a) => a}
+    println("--basic not--")
+    m.foreach { (k,v) => println(k); println(v)}
+    println("----------------")
+
+    // val whileProg = S(Seq(Seq(Asgn("x", Num(1)), While(Lt(Var("x"), Num(10)), Asgn("x", Plus(Var("x"), Num(1))))), Asgn("x", Plus(Var("x"), Num(2)))))
+    // complex if with unhit while
+    val ifJson: String = filesystem::readFile("pylang/tests/testNestedIfWhile.json")
+    feed(ifJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val ifExpr = pythonAstToProg(jsonVal)
+      val (_, s) = run(ifExpr, St(init))
+      val m = s match {case St(a) => a}
+      println("--nested if ex--")
+      m.foreach { (k,v) => println(k); println(v)}
+      println("---------")
     }
   }
 }

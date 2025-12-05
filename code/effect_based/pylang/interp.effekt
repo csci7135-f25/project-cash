@@ -9,51 +9,6 @@ import json
 import map
 import scanner
 
-/*
-// introduction beta effects
-effect intI[D](i: Int): D
-effect boolI[D](i: Bool): D
-effect unitI[D](): D
-
-// introduction effects
-effect varI[D](e1: String): D
-effect asgnI[D](x: String, v: D): D
-effect plusI[D](d1: D, d2: D): D
-effect minusI[D](e1: D, e2: D): D
-effect notI[D](e: D): D
-effect eqI[D](e1: D, e2: D): D
-effect ltI[D](e1: D, e2: D): D
-effect gtI[D](e1: D, e2: D): D
-effect leI[D](e1: D, e2: D): D
-effect geI[D](e1: D, e2: D): D
-effect ifI[D](g: D, t: D, f: D): D
-effect whileI[D](g: D, b: D): D
-effect seqI[D](e1: D, e2: D): D
-// lowering effects
-effect assume[D](guard: D, e: D): D
-effect assumeNot[D](guard: D, e: D): D
-  
-// elimination effects
-interface Elimination {
-  def varE(x: String): Expr
-  def asgnE(x: String, v: Expr): Expr
-  def plusE(e1: Expr, e2: Expr): Expr
-  def minusE(e1: Expr, e2: Expr): Expr
-  def notE(e: Expr): Expr
-  def eqE(e1: Expr, e2: Expr): Expr
-  def ltE(e1: Expr, e2: Expr): Expr
-  def gtE(e1: Expr, e2: Expr): Expr
-  def leE(e1: Expr, e2: Expr): Expr
-  def geE(e1: Expr, e2: Expr): Expr
-  def ifE(g: Expr, t: Expr, f: Expr): Expr
-  def whileE(g: Expr, b: Expr): Expr
-  def seqE(e1: Expr, e2: Expr): Expr
-}
-*/
-
-// type State[D] {
-  // St(st: Map[String, D], e: D)
-// }
 type State[D] {
   St(st: Map[String, D])
 }
@@ -81,7 +36,7 @@ effect leI[D](st: State[D], e1: D, e2: D): (D, State[D])
 effect geI[D](st: State[D], e1: D, e2: D): (D, State[D])
 // effect ifI[D](st: State[D], g: D, t: D, f: D): (D, State[D])
 effect ifI[D](stT: State[D], stF: State[D], g: D, t: D, f: D): (D, State[D])
-effect whileI[D](st: State[D], g: D, b: D): (D, State[D])
+effect whileI[D](stT: State[D], stF: State[D], g: D, b: D): (D, State[D])
 effect seqI[D](st: State[D], e1: D, e2: D): (D, State[D])
 // lowering effects
 effect assume[D](st: State[D], guard: D, e: D): (D, State[D])
@@ -93,7 +48,6 @@ interface Elimination[D] {
   def asgnE(st: State[D], x: String, v: Expr): (Prog, State[D])
   def plusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
   def minusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
-  // def cstE(st: State[D], v: Val): (D, State[D]) ???
   def notE(st: State[D], e: Expr): (Prog, State[D])
   def eqE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
   def ltE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
@@ -106,10 +60,8 @@ interface Elimination[D] {
 }
 
 // unsubstantiated eval
-// need return (D, state)
 def eval[D](prog: (Prog, State[D])): (D, State[D]) /
   {
-    // replace with E versions that directly call I handlers
     intI[D],
     boolI[D],
     unitI[D],
