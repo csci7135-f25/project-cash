@@ -43,11 +43,16 @@ instance : Get ConcStore ConcreteValue where
 instance : Put ConcStore ConcreteValue where
   put  x v s := s.insert x v
 
--- conrcrete lowering
+-- concrete lowering
 instance : β ConcreteValue where
   beta v := v
-instance : γ ConcreteValue where
-  gamma v := v
+-- instance : γ ConcreteValue where
+--   gamma v := match v with
+--     | .Bot =>
+--     | .Top => Set.univ
+--     | .Num n => { .Num n }
+--     | .Bool b => { .Bool b }
+--     | .Unit => { .Unit }
 
 instance [Bottom ConcStore]: Assume ConcStore ConcreteValue where
   assume v ρ := match v with
@@ -63,12 +68,29 @@ instance [Bottom ConcStore]: Assume ConcStore ConcreteValue where
     | .Num n => if n == 0 then ρ else ⊥
     | _ => ρ
 
+instance : Join ConcreteValue where
+  join v1 v2 := match v1, v2 with
+    | .Bot, v => v
+    | v, .Bot => v
+    | .Top, _ => .Top
+    | _, .Top => .Top
+    | v1, v2 => if v1 == v2 then v1 else .Top
+
 instance [Bottom ConcStore]: Join ConcStore where
   join ρ1 ρ2 :=
-    if ρ1.size == 0 then ρ2
-    else if ρ2.size == 0 then ρ1
+    if ρ1 == ⊥ then ρ2
+    else if ρ2 == ⊥ then ρ1
     else
-      ⊥
+      let init := Std.HashMap.emptyWithCapacity (ρ1.size + ρ2.size)
+      ρ1.fold (init := init) fun acc k v1 =>
+        match ρ2[k]? with
+        | some v2 => acc.insert k (v1 ⊔ v2)
+        | none => acc.insert k v1
+      |> fun acc =>
+        ρ2.fold (init := acc) fun acc k v2 =>
+          match acc[k]? with
+          | some _ => acc
+          | none => acc.insert k v2
 
 instance : LatOrder ConcreteValue where
   leq v1 v2 := match v1, v2 with
