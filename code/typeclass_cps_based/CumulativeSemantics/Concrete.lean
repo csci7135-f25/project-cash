@@ -160,6 +160,12 @@ instance {State δ : Type} [Put State δ] : NamedExprI State δ where
   namedExpr x v ρ := (v, Put.put x v ρ)
 
 -- stmts
+instance {State δ : Type}  [Inhabited δ] [SkipI State δ] : SkipE State δ where
+  skip _ ρ :=
+    (default, @SkipI.skip State δ _ ρ (λ σ => σ))
+instance {State δ : Type} [Inhabited δ] : SkipI State δ where
+  skip ρ k := k ρ
+
 instance {State δ : Type} [AssignI State δ] : AssignE State δ where
   assign eval x e ρ :=
     let (v, ρ') := eval (.Exp e) ρ
@@ -191,8 +197,10 @@ instance {State δ : Type} [Assume State δ] [WhileI State δ] [Inhabited δ] : 
       let (v, σ') := eval (.Exp e) σ
       Assume.assume v (eval (.Stm body) σ').snd
     (default, @WhileI.while_ State δ _ ρ k)
+
 instance{State δ: Type} [Bottom State] [LatOrder State]: WhileI State δ where
   while_ (ρ:State) cont := lfp cont ρ
+
 
 instance {State δ : Type} [Inhabited δ] [SeqI State δ] : SeqE State δ where
   seq eval s1 s2 ρ :=
@@ -242,6 +250,8 @@ partial def conc_eval_monolithic : Prog → ConcStore → (ConcreteValue × Conc
       let (v, ρ') := conc_eval_monolithic (.Exp e) ρ
       (v, ρ'.insert x v)
   | .Stm s, ρ => match s with
+    | .Skip =>
+      (.Unit, ρ)
     | .Assign x e =>
       let (v, ρ') := conc_eval_monolithic (.Exp e) ρ
       (.Unit, ρ'.insert x v)

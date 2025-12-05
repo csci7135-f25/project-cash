@@ -29,13 +29,18 @@ class NamedExprI (State δ : Type) where
   namedExpr : Ident → δ → State → (δ × State)
 
 -- Stmt elmination (E) and introduction (I) classes
+class SkipE (State δ : Type) where
+  skip : (Prog → State → (δ × State)) → State → (δ × State)
+class SkipI (State δ : Type) where
+  skip : State → (State → State) → State
+
 class AssignE (State δ : Type) where
   assign : (Prog → State → (δ × State)) → Ident → Expr → State → (δ × State)
 class AssignI (State δ : Type) where
   assign : Ident → δ → State → (δ × State)
 
 class IfE (State δ : Type) where
-  if_ : (Prog → State → (δ × State)) → Expr → Stmt → Stmt→ State → (δ × State)
+  if_ : (Prog → State → (δ × State)) → Expr → Stmt → Stmt → State → (δ × State)
 class IfI (State δ : Type) where
   if_ : State → (State → State) → (State → State) → State
 

@@ -1,4 +1,3 @@
-
 abbrev Ident := String
 abbrev Num := Int
 
@@ -32,6 +31,7 @@ inductive Expr where
   | NamedExpr: Ident → Expr → Expr --state
 
 inductive Stmt where
+  | Skip : Stmt --ctrl flow
   | Assign: Ident → Expr → Stmt --state
   | If: Expr → Stmt → Stmt → Stmt --ctrl flow
   | Seq: Stmt → Stmt → Stmt -- ctrl flow
