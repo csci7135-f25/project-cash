@@ -18,16 +18,11 @@ def println(v: Val) = v match {
   case U() => println("()")
 }
 
-// type Syntax <- elim effects act on this
-
-// type Stmt
-
 type Expr {
   Num(i: Int)
   Boolean(b: Bool)
   Unit()
   Var(x: String)
-  Asgn(x: String, v: Expr)
   Plus(e1: Expr, e2: Expr)
   Minus(e1: Expr, e2: Expr)
   Not(e: Expr)
@@ -36,7 +31,17 @@ type Expr {
   Gt(e1: Expr, e2: Expr)
   Le(e1: Expr, e2: Expr)
   Ge(e1: Expr, e2: Expr)
-  If(g: Expr, t: Expr, f: Expr)
-  While(g: Expr, b: Expr)
-  Seq(e1: Expr, e2: Expr)
+}
+
+type Stmt {
+  Skip()
+  Asgn(x: String, v: Expr)
+  If(g: Expr, t: Stmt, f: Stmt)
+  While(g: Expr, b: Stmt)
+  Seq(e1: Stmt, e2: Stmt)
+}
+
+type Prog {
+  E(e : Expr)
+  S(s : Stmt)
 }

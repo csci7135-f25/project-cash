@@ -3,4 +3,3 @@ if x < 20:
     x = x + 1
 else:
     x = 50
-x

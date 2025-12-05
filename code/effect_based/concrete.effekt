@@ -10,7 +10,9 @@ import json
 import map
 import scanner
 
+/*
 def match_to_fold{prog: => Val / {Elimination}}: Val /
+// def match_to_fold{prog: => Val / {Elimination}}: (Val, Map[String,Val]) /
   {
     varI[Val],
     asgnI[Val],
@@ -21,7 +23,8 @@ def match_to_fold{prog: => Val / {Elimination}}: Val /
     ltI[Val],
     gtI[Val],
     leI[Val],
-    geI[Val]
+    geI[Val],
+    ifI[Val]
   } = {
   try {
     prog()
@@ -57,11 +60,14 @@ def match_to_fold{prog: => Val / {Elimination}}: Val /
     def geE(e1, e2) = {
       do geI(resume(e1), resume(e2))
     }
-    def ifE(g, t, f) = resume(g) match {
-      case B(true) => resume(t)
-      case B(false) => resume(f)
-      case I(_) => resume(f)
-      case U() => resume(f)
+    def ifE(g, t, f) = {
+      // ifI(resume(g), resume(t), resume(f))
+      resume(g) match {
+        case B(true) => resume(t)
+        case B(false) => resume(f)
+        case I(_) => resume(f)
+        case U() => resume(f)
+      }
     }
     def whileE(g, b) = resume(g) match {
       // case B(true) => resume(Seq(b, While(g,b)))
@@ -98,6 +104,7 @@ def stateH(init: Map[String, Val])
 
 
 // substantiated eval
+// maybe this can return state directly
 def run(e: Expr, init: Map[String, Val]): Val = {
   try {
     with stateH(init)
@@ -208,6 +215,322 @@ namespace test {
       val (_, jsonVal) = build { decodeJson() }
       val asgnExpr = pythonAstToExpr(jsonVal)
       println(run(asgnExpr, init))
+    }
+  }
+}
+*/
+
+// State operations
+effect get[N,D](st: State[N,D], x: N): D
+effect update[N,D](st: State[N,D], x: N, v: D): State[N,D]
+
+def match_to_fold[N,D]{prog: => (D, State[N,D]) / {Elimination[N,D]}}: (D, State[N,D]) /
+  {
+    varI[N,D],
+    asgnI[N,D],
+    plusI[N,D],
+    minusI[N,D],
+    notI[N,D],
+    eqI[N,D],
+    ltI[N,D],
+    gtI[N,D],
+    leI[N,D],
+    geI[N,D],
+    ifI[N,D],
+    whileI[N,D],
+    seqI[N,D],
+    get[N,D],
+    update[N,D]
+  } = {
+  try {
+    prog()
+  }
+  with Elimination[N,D] {
+    def varE(st, x) = {
+      // Get value from state and call varI
+      val v = do get(st, x)
+      val (result, newSt) = do varI(st, x)
+      (E(Var(x)), newSt)
+    }
+    
+    def asgnE(st, x, v) = {
+      // Evaluate the expression first
+      val (vRes, st1) = resume((E(v), st))
+      // Then perform assignment
+      val (result, st2) = do asgnI(st1, x, vRes)
+      (S(Asgn(x, v)), st2)
+    }
+    
+    def plusE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do plusI(st2, v1, v2)
+      (E(Plus(e1, e2)), st3)
+    }
+    
+    def minusE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do minusI(st2, v1, v2)
+      (E(Minus(e1, e2)), st3)
+    }
+    
+    def notE(st, e) = {
+      val (v, st1) = resume((E(e), st))
+      val (result, st2) = do notI(st1, v)
+      (E(Not(e)), st2)
+    }
+    
+    def eqE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do eqI(st2, v1, v2)
+      (E(Eq(e1, e2)), st3)
+    }
+    
+    def ltE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do ltI(st2, v1, v2)
+      (E(Lt(e1, e2)), st3)
+    }
+    
+    def gtE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do gtI(st2, v1, v2)
+      (E(Gt(e1, e2)), st3)
+    }
+    
+    def leE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do leI(st2, v1, v2)
+      (E(Le(e1, e2)), st3)
+    }
+    
+    def geE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      val (result, st3) = do geI(st2, v1, v2)
+      (E(Ge(e1, e2)), st3)
+    }
+    
+    def ifE(st, g, t, f) = {
+      val (guardVal, st1) = resume((E(g), st))
+      val (thenRes, st2) = resume((S(t), st1))
+      val (elseRes, st3) = resume((S(f), st1))
+      val (result, st4) = do ifI(st1, guardVal, thenRes, elseRes)
+      (S(If(g, t, f)), st4)
+    }
+    
+    def whileE(st, g, b) = {
+      val (guardVal, st1) = resume((E(g), st))
+      guardVal match {
+        case B(true) => {
+          val (_, st2) = resume((S(b), st1))
+          resume((S(While(g, b)), st2))
+        }
+        case B(false) => (S(Skip()), st1)
+        case _ => (S(Skip()), st1)
+      }
+    }
+    
+    def seqE(st, s1, s2) = {
+      val (_, st1) = resume((S(s1), st))
+      val (res2, st2) = resume((S(s2), st1))
+      (S(Seq(s1, s2)), st2)
+    }
+  }
+}
+
+// State handler using get/update effects
+def stateH[N,D](init: Map[N, D])
+  {prog: State[N,D] => (D, State[N,D]) / {get[N,D], update[N,D]}}: (D, State[N,D]) = {
+  val initState = St(init, default[D]())
+  try {
+    prog(initState)
+  }
+  with get[N,D] { (st, x) =>
+    val St(m, e) = st
+    map::get[N, D](m, x) match {
+      case Some(v) => resume(v)
+      case None() => resume(e) // return default if not found
+    }
+  }
+  with update[N,D] { (st, x, v) =>
+    val St(m, e) = st
+    val newMap = m.put(x, v)
+    val newState = St(newMap, e)
+    resume(newState)
+  }
+}
+
+// Concrete introduction handlers
+def run[N,D](prog: Prog, init: Map[N, D]): (D, State[N,D]) = {
+  try {
+    with stateH[N,D](init)
+    with match_to_fold[N,D]()
+    val initState = St(init, default[D]())
+    eval[N,D]((prog, initState))
+  }
+  with intI[N,D] { (st, i) =>
+    val result = I(i)
+    resume((result, St(st.st, result)))
+  }
+  with boolI[N,D] { (st, b) =>
+    val result = B(b)
+    resume((result, St(st.st, result)))
+  }
+  with unitI[N,D] { (st) =>
+    val result = U()
+    resume((result, St(st.st, result)))
+  }
+  with varI[N,D] { (st, x) =>
+    val v = do get(st, x)
+    resume((v, st))
+  }
+  with asgnI[N,D] { (st, x, v) =>
+    val newSt = do update(st, x, v)
+    resume((U(), newSt))
+  }
+  with plusI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = I(i1 + i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = U()
+        resume((result, St(st.st, result)))
+    }
+  }
+  with minusI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = I(i1 - i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = U()
+        resume((result, St(st.st, result)))
+    }
+  }
+  with notI[N,D] { (st, d) =>
+    d match {
+      case B(true) => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+      case B(false) => 
+        val result = B(true)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = U()
+        resume((result, St(st.st, result)))
+    }
+  }
+  with eqI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = B(i1 == i2)
+        resume((result, St(st.st, result)))
+      case (B(b1), B(b2)) => 
+        val result = B(b1 == b2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+    }
+  }
+  with ltI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = B(i1 < i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+    }
+  }
+  with gtI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = B(i1 > i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+    }
+  }
+  with leI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = B(i1 <= i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+    }
+  }
+  with geI[N,D] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (I(i1), I(i2)) => 
+        val result = B(i1 >= i2)
+        resume((result, St(st.st, result)))
+      case _ => 
+        val result = B(false)
+        resume((result, St(st.st, result)))
+    }
+  }
+  with ifI[N,D] { (st, g, t, f) =>
+    g match {
+      case B(true) => resume((t, st))
+      case B(false) => resume((f, st))
+      case _ => resume((f, st))
+    }
+  }
+  with whileI[N,D] { (st, g, b) =>
+    // While is handled in elimination
+    resume((U(), st))
+  }
+  with seqI[N,D] { (st, e1, e2) =>
+    // Seq is handled in elimination
+    resume((e2, st))
+  }
+}
+
+namespace test {
+  def main() = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val init: Map[String, Val] = map::empty(box compareStringBytes)
+
+    // basic arith
+    val arithJson: String = filesystem::readFile("pylang/tests/testArith.json")
+    feed(arithJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val arithProg = pythonAstToProg(jsonVal)
+      val (result, finalState) = run(arithProg, init)
+      println(result)
+    }
+
+    // basic if
+    val ifJson: String = filesystem::readFile("pylang/tests/testIf.json")
+    feed(ifJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val ifProg = pythonAstToProg(jsonVal)
+      val (result, finalState) = run(ifProg, init)
+      println(result)
+    }
+
+    // basic assign
+    val asgnJson: String = filesystem::readFile("pylang/tests/testAssgn.json")
+    feed(asgnJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val asgnProg = pythonAstToProg(jsonVal)
+      val (result, finalState) = run(asgnProg, init)
+      println(result)
     }
   }
 }

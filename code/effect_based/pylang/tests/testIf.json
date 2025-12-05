@@ -96,16 +96,6 @@
           "type_comment": null
         }
       ]
-    },
-    {
-      "type": "Expr",
-      "value": {
-        "type": "Name",
-        "id": "x",
-        "ctx": {
-          "type": "Load"
-        }
-      }
     }
   ],
   "type_ignores": []
