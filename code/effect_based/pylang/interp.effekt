@@ -37,7 +37,7 @@ effect geI[D](st: State[D], e1: D, e2: D): (D, State[D])
 // effect ifI[D](st: State[D], g: D, t: D, f: D): (D, State[D])
 effect ifI[D](stT: State[D], stF: State[D], g: D, t: D, f: D): (D, State[D])
 effect whileI[D](stT: State[D], stF: State[D], g: D, b: D): (D, State[D])
-effect seqI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect seqI[D](st1: State[D], st2: State[D], e1: D, e2: D): (D, State[D])
 // lowering effects
 effect assume[D](st: State[D], guard: D, e: D): (D, State[D])
 effect assumeNot[D](st: State[D], guard: D, e: D): (D, State[D])

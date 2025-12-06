@@ -30,8 +30,8 @@ def match_to_fold
     leI[Val],
     geI[Val],
     ifI[Val],
-    whileI[Val]
-    // seqI[Val],
+    whileI[Val],
+    seqI[Val]
   } =
 {
   try {
@@ -109,19 +109,13 @@ def match_to_fold
         case B(true) => resume((S(While(guardExpr, bodyStmt)), st2))
         case _ => resume((E(Unit()), st1))
       }
-      /*
-      resume((E(guardExpr), st)) match {
-        case (B(true), st1) => {resume((S(Seq(bodyStmt, While(guardExpr, bodyStmt))), st1))}
-        case (B(False), st1) => resume((E(Unit()), st))
-        case (I(_), st1) => resume((E(Unit()), st))
-        case (U(), st1) => resume((E(Unit()), st)) 
-      }
-      */
     }
 
     def seqE(st, s1, s2) = {
-      val (_, st1) = resume((S(s1), st))
+      val (v1, st1) = resume((S(s1), st))
+      val (v2, st2) = resume((S(s2), st1))
       resume((S(s2), st1))
+      do seqI(st1, st2, v1, v2)
     }
   }
 }
@@ -234,6 +228,7 @@ def run(prog: Prog, init: State[Val]): (Val, State[Val]) = {
       case _ => resume((U(), stG))
     }
   }
+  with seqI[Val] {(_, st2, _, v2) => resume((v2, st2))}
 }
 
 namespace test {
