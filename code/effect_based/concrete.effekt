@@ -297,7 +297,13 @@ namespace test {
     m.foreach { (k,v) => println(k); println(v)}
     println("----------------")
 
-    // val whileProg = S(Seq(Seq(Asgn("x", Num(1)), While(Lt(Var("x"), Num(10)), Asgn("x", Plus(Var("x"), Num(1))))), Asgn("x", Plus(Var("x"), Num(2)))))
+    val whileProg = S(Seq(Seq(Asgn("x", Num(1)), While(Lt(Var("x"), Num(1000000)), Asgn("x", Plus(Var("x"), Num(1))))), Asgn("x", Plus(Var("x"), Num(2)))))
+    val (_, s) = run(whileProg, St(init))
+    val m = s match {case St(a) => a}
+    println("-- performance testing --")
+    m.foreach { (k,v) => println(k); println(v)}
+    println("---------")
+
     // complex if with unhit while
     val ifJson: String = filesystem::readFile("pylang/tests/testNestedIfWhile.json")
     feed(ifJson) {
