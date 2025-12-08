@@ -14,13 +14,13 @@
       ],
       "value": {
         "type": "Constant",
-        "value": 10,
+        "value": 1,
         "kind": null
       },
       "type_comment": null
     },
     {
-      "type": "If",
+      "type": "While",
       "test": {
         "type": "Compare",
         "left": {
@@ -38,7 +38,7 @@
         "comparators": [
           {
             "type": "Constant",
-            "value": 20,
+            "value": 10,
             "kind": null
           }
         ]
@@ -76,33 +76,14 @@
           "type_comment": null
         }
       ],
-      "orelse": [
-        {
-          "type": "Assign",
-          "targets": [
-            {
-              "type": "Name",
-              "id": "x",
-              "ctx": {
-                "type": "Store"
-              }
-            }
-          ],
-          "value": {
-            "type": "Constant",
-            "value": 50,
-            "kind": null
-          },
-          "type_comment": null
-        }
-      ]
+      "orelse": []
     },
     {
       "type": "Assign",
       "targets": [
         {
           "type": "Name",
-          "id": "y",
+          "id": "x",
           "ctx": {
             "type": "Store"
           }
@@ -122,7 +103,7 @@
         },
         "right": {
           "type": "Constant",
-          "value": 12,
+          "value": 2,
           "kind": null
         }
       },

@@ -14,7 +14,7 @@
       ],
       "value": {
         "type": "Constant",
-        "value": 1,
+        "value": true,
         "kind": null
       },
       "type_comment": null
@@ -31,21 +31,16 @@
         }
       ],
       "value": {
-        "type": "BinOp",
-        "left": {
+        "type": "UnaryOp",
+        "op": {
+          "type": "Not"
+        },
+        "operand": {
           "type": "Name",
           "id": "x",
           "ctx": {
             "type": "Load"
           }
-        },
-        "op": {
-          "type": "Add"
-        },
-        "right": {
-          "type": "Constant",
-          "value": 1,
-          "kind": null
         }
       },
       "type_comment": null

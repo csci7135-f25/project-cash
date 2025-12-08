@@ -9,70 +9,87 @@ import json
 import map
 import scanner
 
+type State[D] {
+  St(st: Map[String, D])
+}
+
+// type StateP[S] {
+  // St(s : S)
+// }
+
 // introduction beta effects
-effect intI[D](i: Int): D
-effect boolI[D](i: Bool): D
-effect unitI[D](): D
+effect intI[D](st: State[D], i: Int): (D, State[D])
+effect boolI[D](st: State[D], i: Bool): (D, State[D])
+effect unitI[D](st: State[D]): (D, State[D])
+// effect cstI[D](v: Val, st: State[D]): (D, State[D])
 
 // introduction effects
-effect varI[D](e1: String): D
-effect asgnI[D](x: String, v: D): D
-effect plusI[D](d1: D, d2: D): D
-effect minusI[D](e1: D, e2: D): D
-effect notI[D](e: D): D
-effect eqI[D](e1: D, e2: D): D
-effect ltI[D](e1: D, e2: D): D
-effect gtI[D](e1: D, e2: D): D
-effect leI[D](e1: D, e2: D): D
-effect geI[D](e1: D, e2: D): D
-effect ifI[D](g: D, t: Expr, f: Expr): D
-effect whileI[D](g: D, b: D): D
-effect seqI[D](e1: D, e2: D): D
+effect varI[D](st: State[D], e1: String): (D, State[D])
+effect asgnI[D](st: State[D], x: String, v: D): (D, State[D])
+effect plusI[D](st: State[D], d1: D, d2: D): (D, State[D])
+effect minusI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect notI[D](st: State[D], e: D): (D, State[D])
+effect eqI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect ltI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect gtI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect leI[D](st: State[D], e1: D, e2: D): (D, State[D])
+effect geI[D](st: State[D], e1: D, e2: D): (D, State[D])
+// effect ifI[D](st: State[D], g: D, t: D, f: D): (D, State[D])
+effect ifI[D](stT: State[D], stF: State[D], g: D, t: D, f: D): (D, State[D])
+effect whileI[D](stT: State[D], stF: State[D], g: D, b: D): (D, State[D])
+effect seqI[D](st1: State[D], st2: State[D], e1: D, e2: D): (D, State[D])
 // lowering effects
-effect assume[D](guard: D, e: D): D
-effect assumeNot[D](guard: D, e: D): D
+effect assume[D](st: State[D], guard: D, e: D): (D, State[D])
+effect assumeNot[D](st: State[D], guard: D, e: D): (D, State[D])
   
 // elimination effects
-interface Elimination {
-  def varE(x: String): Expr
-  def asgnE(x: String, v: Expr): Expr
-  def plusE(e1: Expr, e2: Expr): Expr
-  def minusE(e1: Expr, e2: Expr): Expr
-  def notE(e: Expr): Expr
-  def eqE(e1: Expr, e2: Expr): Expr
-  def ltE(e1: Expr, e2: Expr): Expr
-  def gtE(e1: Expr, e2: Expr): Expr
-  def leE(e1: Expr, e2: Expr): Expr
-  def geE(e1: Expr, e2: Expr): Expr
-  def ifE(g: Expr, t: Expr, f: Expr): Expr
-  def whileE(g: Expr, b: Expr): Expr
-  def seqE(e1: Expr, e2: Expr): Expr
+interface Elimination[D] {
+  def varE(st: State[D], x: String): (Prog, State[D])
+  def asgnE(st: State[D], x: String, v: Expr): (Prog, State[D])
+  def plusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def minusE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def notE(st: State[D], e: Expr): (Prog, State[D])
+  def eqE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def ltE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def gtE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def leE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def geE(st: State[D], e1: Expr, e2: Expr): (Prog, State[D])
+  def ifE(st: State[D], g: Expr, t: Stmt, f: Stmt): (Prog, State[D])
+  def whileE(st: State[D], g: Expr, b: Stmt): (Prog, State[D])
+  def seqE(st: State[D], e1: Stmt, e2: Stmt): (Prog, State[D])
 }
 
 // unsubstantiated eval
-def eval[D](e: Expr): D /
+def eval[D](prog: (Prog, State[D])): (D, State[D]) /
   {
     intI[D],
     boolI[D],
     unitI[D],
     varI[D],
-    Elimination
-  } = e match {
-    case Num(i) => do intI(i)
-    case Boolean(b) => do boolI(b)
-    case Unit() => do unitI()
-    case Plus(e1, e2) => eval(do plusE(e1, e2))
-    case Minus(e1, e2) => eval(do minusE(e1, e2))
-    case Not(e) => eval(do notE(e))
-    case Eq(e1, e2) => eval(do eqE(e1, e2))
-    case Lt(e1, e2) => eval(do ltE(e1, e2))
-    case Gt(e1, e2) => eval(do gtE(e1, e2))
-    case Le(e1, e2) => eval(do leE(e1, e2))
-    case Ge(e1, e2) => eval(do geE(e1, e2))
-    case Var(x) => do varI(x)
-    case Asgn(x, v) => eval(do asgnE(x,v))
-    case If(g, t, f) => eval(do ifE(g,t,f))
-    case While(g, b) => eval(do whileE(g, b))
-    case Seq(e1, e2) => eval(do seqE(e1, e2))
+    Elimination[D]
+  } = 
+  val (e, st) = prog
+  e match {
+    case E(e) => e match  {
+      case Num(i) => do intI(st,i)
+      case Boolean(b) => do boolI(st,b)
+      case Unit() => do unitI(st)
+      case Plus(e1, e2) => eval(do plusE(st, e1, e2))
+      case Minus(e1, e2) => eval(do minusE(st, e1, e2))
+      case Not(e) => eval(do notE(st, e))
+      case Eq(e1, e2) => eval(do eqE(st, e1, e2))
+      case Lt(e1, e2) => eval(do ltE(st, e1, e2))
+      case Gt(e1, e2) => eval(do gtE(st, e1, e2))
+      case Le(e1, e2) => eval(do leE(st, e1, e2))
+      case Ge(e1, e2) => eval(do geE(st, e1, e2))
+      case Var(x) => do varI(st,x)
+    }
+    case S(stmt) => stmt match {
+      case Asgn(x, v) => eval(do asgnE(st, x,v))
+      case If(g, t, f) => eval(do ifE(st, g,t,f))
+      case While(g, b) => eval(do whileE(st, g, b))
+      case Seq(e1, e2) => eval(do seqE(st, e1, e2))
+      case Skip() => do unitI(st) // skip just returns (Unit, State)
+    }
   }
 
