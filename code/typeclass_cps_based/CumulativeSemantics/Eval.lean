@@ -1,12 +1,12 @@
 import CumulativeSemantics.Classes
 
 -- generic unsubstantiated interpreter
-partial def eval {State δ : Type}
+partial def eval {σ δ : Type}
   [Inhabited δ]
-  [CstE State δ] [VarE State δ] [BinopE State δ] [NegE State δ] [NamedExprE State δ]
-  [AssignE State δ] [SkipE State δ] [IfE State δ] [SeqE State δ]
-  [WhileE State δ]
-  : Prog → State → (δ × State)
+  [CstE σ δ] [VarE σ δ] [BinopE σ δ] [NegE σ δ] [NamedExprE σ δ]
+  [AssignE σ δ] [SkipE σ δ] [IfE σ δ] [SeqE σ δ]
+  [WhileE σ δ]
+  : Prog → σ → (δ × σ)
   | (.Exp e) => match e with
     | .Cst v => CstE.cst eval v
     | .Var x => VarE.var eval x

@@ -107,17 +107,17 @@ instance : LatOrder ConcStore where
 
 
 -- instances of elim and intro handlers
-instance {State δ : Type} [CstI δ] : CstE State δ where
+instance {σ δ : Type} [CstI δ] : CstE σ δ where
   cst _ v ρ := (CstI.cst v, ρ)
 instance : CstI ConcreteValue where
   cst v := v
 
-instance {State δ : Type} [VarI State δ] : VarE State δ where
+instance {σ δ : Type} [VarI σ δ] : VarE σ δ where
   var _ x ρ := VarI.var x ρ
-instance {State δ : Type} [Get State δ] : VarI State δ where
+instance {σ δ : Type} [Get σ δ] : VarI σ δ where
   var x ρ := (Get.get x ρ, ρ)
 
-instance {State δ : Type} [BinopI δ] : BinopE State δ where
+instance {σ δ : Type} [BinopI δ] : BinopE σ δ where
   binop eval e1 e2 op ρ :=
     let (v1, ρ') := eval (.Exp e1) ρ
     let (v2, ρ'') := eval (.Exp e2) ρ'
@@ -140,7 +140,7 @@ instance : BinopI ConcreteValue where
     | (.Bool b1, .Bool b2, Op.Or) => .Bool (b1 || b2)
     | _ => .Bot
 
-instance {State δ : Type} [NegI δ] : NegE State δ where
+instance {σ δ : Type} [NegI δ] : NegE σ δ where
   neg eval e ρ :=
     let (v, ρ') := eval (.Exp e) ρ
     (NegI.neg v, ρ')
@@ -152,34 +152,34 @@ instance : NegI ConcreteValue where
     | .Bool b => .Bool (!b)
     | _ => .Bot
 
-instance {State δ : Type} [NamedExprI State δ] : NamedExprE State δ where
+instance {σ δ : Type} [NamedExprI σ δ] : NamedExprE σ δ where
   namedExpr eval x e ρ :=
     let (v, ρ') := eval (.Exp e) ρ
     NamedExprI.namedExpr x v ρ'
-instance {State δ : Type} [Put State δ] : NamedExprI State δ where
+instance {σ δ : Type} [Put σ δ] : NamedExprI σ δ where
   namedExpr x v ρ := (v, Put.put x v ρ)
 
 -- stmts
-instance {State δ : Type}  [Inhabited δ] [SkipI State δ] : SkipE State δ where
+instance {σ δ : Type}  [Inhabited δ] [SkipI σ δ] : SkipE σ δ where
   skip _ ρ :=
-    (default, @SkipI.skip State δ _ ρ (λ σ => σ))
-instance {State δ : Type} [Inhabited δ] : SkipI State δ where
+    (default, @SkipI.skip σ δ _ ρ (λ σ => σ))
+instance {σ δ : Type} [Inhabited δ] : SkipI σ δ where
   skip ρ k := k ρ
 
-instance {State δ : Type} [AssignI State δ] : AssignE State δ where
+instance {σ δ : Type} [AssignI σ δ] : AssignE σ δ where
   assign eval x e ρ :=
     let (v, ρ') := eval (.Exp e) ρ
     AssignI.assign x v ρ'
-instance {State δ : Type} [Inhabited δ] [Put State δ] : AssignI State δ where
+instance {σ δ : Type} [Inhabited δ] [Put σ δ] : AssignI σ δ where
   assign x v ρ := (default, Put.put x v ρ)
 
-instance {State δ : Type} [Inhabited δ] [IfI State δ] [Assume State δ] : IfE State δ where
+instance {σ δ : Type} [Inhabited δ] [IfI σ δ] [Assume σ δ] : IfE σ δ where
   if_ eval e t f ρ :=
     let (v, ρ') := eval (.Exp e) ρ
-    let tk : State → State := λ σ => Assume.assume v (eval (.Stm t) σ).snd
-    let fk : State → State := λ σ => Assume.assumef v (eval (.Stm f) σ).snd
-    (default, @IfI.if_ State δ _ ρ' tk fk)
-instance {State δ : Type}  [Join State] : IfI State δ where
+    let tk : σ → σ := λ σ => Assume.assume v (eval (.Stm t) σ).snd
+    let fk : σ → σ := λ σ => Assume.assumef v (eval (.Stm f) σ).snd
+    (default, @IfI.if_ σ δ _ ρ' tk fk)
+instance {σ δ : Type}  [Join σ] : IfI σ δ where
   if_ ρ tk fk :=
     (tk ρ) ⊔ (fk ρ)
 
@@ -191,23 +191,23 @@ partial def lfp {α : Type} (f : α → α) (x : α) [Bottom α] [LatOrder α] :
     else aux next
   aux x
 
-instance {State δ : Type} [Assume State δ] [WhileI State δ] [Inhabited δ] : WhileE State δ where
+instance {σ δ : Type} [Assume σ δ] [WhileI σ δ] [Inhabited δ] : WhileE σ δ where
   while_ eval e body ρ:=
-    let k : State → State := fun σ =>
+    let k : σ → σ := fun σ =>
       let (v, σ') := eval (.Exp e) σ
       Assume.assume v (eval (.Stm body) σ').snd
-    (default, @WhileI.while_ State δ _ ρ k)
+    (default, @WhileI.while_ σ δ _ ρ k)
 
-instance{State δ: Type} [Bottom State] [LatOrder State]: WhileI State δ where
-  while_ (ρ:State) cont := lfp cont ρ
+instance{σ δ: Type} [Bottom σ] [LatOrder σ]: WhileI σ δ where
+  while_ (ρ:σ) cont := lfp cont ρ
 
 
-instance {State δ : Type} [Inhabited δ] [SeqI State δ] : SeqE State δ where
+instance {σ δ : Type} [Inhabited δ] [SeqI σ δ] : SeqE σ δ where
   seq eval s1 s2 ρ :=
-    let s1k : State → State := fun σ => (eval (.Stm s1) σ).snd
-    let s2k : State → State := fun σ => (eval (.Stm s2) σ).snd
-    (default, @SeqI.seq State δ _ ρ s1k s2k)
-instance {State δ : Type} [Join State] : SeqI State δ where
+    let s1k : σ → σ := fun σ => (eval (.Stm s1) σ).snd
+    let s2k : σ → σ := fun σ => (eval (.Stm s2) σ).snd
+    (default, @SeqI.seq σ δ _ ρ s1k s2k)
+instance {σ δ : Type} [Join σ] : SeqI σ δ where
   seq ρ s1k s2k :=
     s2k (s1k ρ)
 
