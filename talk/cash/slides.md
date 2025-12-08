@@ -21,11 +21,118 @@ hideInToc: true
 
 ---
 
+# What does it mean to accumulate semantics?
+
+- parametric functions allow for the decoupling of return value
+    + but how can you parameterize the direction of evaluation?
+    + this goes lower than type level constructs
+
+````md magic-move
+```elixir
+eval_forward(syntax, state): (Int, state')
+```
+```elixir
+eval_forward_generic[D](syntax, state): (D, state')
+```
+```elixir
+eval_bidirectional_generic[D](syntax, state): (D, state')
+```
+````
+
+---
+
 # Interfaces and Witnesses
+
+- Type Classes allow polymorphism via the definition of an interface
+    - A witness is an implementation the obeys this interface
+
+
+```mermaid
+graph TD
+    A["Type Class: Eq a<br/>(Interface)"]
+    B["eq :: a → a → Bool<br/>neq :: a → a → Bool"]
+    
+    C["Witness <br/>Instance: Eq Int"]
+    D["Witness <br/>Instance: Eq String"]
+    E["Witness <br/>Instance: Eq Bool"]
+    
+    
+    A -->|defines| B
+    A -->|has witness| C
+    A -->|has witness| D
+    A -->|has witness| E
+    
+    
+    style A fill:#e1f5ff,stroke:#0066cc,stroke-width:3px,color:#000
+    style B fill:#fff4e1,stroke:#ff9800,stroke-width:2px,color:#000
+    style C fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
+    style D fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
+    style E fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
+```
 
 ---
 
 # Resumptions and Continuations
+
+```mermaid
+graph LR
+    Eval1["eval σ seq(s1, s2)"] -->|perform| HandlerF{Forwards}
+    Eval1 -->|perform| HandlerR{Reverse}
+    
+    HandlerF --> Eval2F["eval σ s1"]
+    Eval2F --> St1F["σ'"]
+    St1F --> Eval3F["eval σ' s2"]
+    Eval3F --> EndF([End])
+    
+    HandlerR --> Eval2R["eval σ s2"]
+    Eval2R --> St1R["σ'"]
+    St1R --> Eval3R["eval σ' s1"]
+    Eval3R --> EndR([End])
+    
+    style Eval1 fill:#90caf9,stroke:#1976d2,stroke-width:3px,color:#000
+    
+    style HandlerF fill:#ff9800,stroke:#e65100,stroke-width:3px,color:#000
+    style St1F fill:#bbdefb,stroke:#1976d2,stroke-width:2px,color:#000
+    
+    style Eval2F fill:#64b5f6,stroke:#1976d2,stroke-width:2px,color:#000
+    style Eval3F fill:#42a5f5,stroke:#1976d2,stroke-width:2px,color:#000
+    style EndF fill:#2196f3,stroke:#1565c0,stroke-width:2px,color:#fff
+    
+    style HandlerR fill:#4caf50,stroke:#2e7d32,stroke-width:3px,color:#fff
+    style St1R fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px,color:#000
+    
+    style Eval2R fill:#ba68c8,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style Eval3R fill:#ab47bc,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style EndR fill:#9c27b0,stroke:#6a1b9a,stroke-width:2px,color:#fff
+```
+
+````md magic-move
+```elixir
+# forwards
+k(k(eval(s1,σ)), s2)
+```
+```elixir
+# forwards
+k(σ`, s2)
+```
+```elixir
+# forwards
+σ``
+```
+```elixir
+# backwards
+k(k(eval(s2,σ)), s1)
+```
+```elixir
+# backwards
+k(σ`, s1)
+```
+```elixir
+# backwards
+σ``
+```
+
+````
 
 ---
 
@@ -44,7 +151,6 @@ Ident       x ::= string
 ```
 
 ---
-
 layout: two-cols
 ---
 
@@ -72,49 +178,22 @@ def eval(e: expr, env:...): ...
 ```
 ```elixir
 def eval(e: expr, env): int = match e
-    | cst(n) => n
-    | var(x) => get(x)
-    | plus(e1, e2) => eval(e1,env) + eval(e2,env)
-    | ifnz(e1, e2, e3) =>
-        if (eval(e1) == 0) {eval(e3,env)}
-        else {eval(e2,env)}
+    ...
     | seq(e1, e2) => eval(e2, eval(e1, env))
 ```
-```elixir
+```elixir {*|1}
 def eval_I(e: expr, env): Interval = match e
-    | cst(n) => [n, n]
-    | var(x) => get(x)
-    | plus(e1, e2) => 
-        [l1, u1] = eval(e1, env)
-        [l2, u2] = eval(e2, env)
-        [l1 + l2, u1 + u2]
-    | ifnz(e1, e2, e3) =>
-        [l, u] = eval(e1,env)
-        if (l <= 0 <= u) {  // crosses zero
-            [l2, u2] = eval(e2,env)
-            [l3, u3] = eval(e3,env)
-            [min(l2, l3), max(u2, u3)]
-        } else if (l > 0 || u < 0) {eval(e2,env)} 
-        else {eval(e3,env)}
+    ...
     | seq(e1, e2) => eval(e2, eval(e1, env))
 ```
-```elixir
+```elixir {*|1|3}
 def eval_rev(e : expr, env_out): Set[str] = match e
-    | cst(n) => {}
-    | var(x) => {x} 
-    | asgn(x, v) => eval_rev(v, env_out) ∪ {x} 
-    | plus(e1, e2) => 
-        eval_rev(e2, env_out) ∪ eval_rev(e1, env_out)
-    | ifnz(e1, e2, e3) =>
-        eval_rev(e3, env_out) ∪
-        eval_rev(e2, env_out) ∪ 
-        eval_rev(e1, env_out)  
+    ...
     | seq(e1, e2) => eval(e1, eval(e2, env_out))
 ```
 ````
 
 ---
-
 layout: two-cols
 ---
 
@@ -154,37 +233,22 @@ graph TD
 ::right::
 
 ````md magic-move
-```elixir
+```elixir {*|1|3|5}
 eval(e: expr, env): D \ {I} = match e
-    | cst(n) => cstI(n)
-    | var(x) => varI(x)
+    ...
     | plus(e1, e2) => plusI(eval(e1,env), eval(e2,env))
-    | ifnz(e1, e2, e3) =>
-        ifI(
-            eval(e1, env),
-            eval(e3, env),
-            eval(e2, env)
-        )
+    ...
     | seq(e1, e2) => eval(e2, eval(e1, env))
 ```
-```elixir {*|11}
+```elixir {*|3}
 eval_rev(e: expr, env): D \ {I} = match e
-    | cst(n) => cstI(n)
-    | var(x) => varI(x)
-    | plus(e1, e2) => plusI(eval(e1,env), eval(e2,env))
-    | ifnz(e1, e2, e3) =>
-        ifI(
-            eval(e1, env),
-            eval(e3, env),
-            eval(e2, env)
-        )
+    ...
     | seq(e1, e2) => eval(e1, eval(e2, env))
 
 ```
 ````
 
 ---
-
 layout: two-cols
 ---
 
@@ -238,7 +302,7 @@ graph TD
 
 ::right::
 
-```elixir
+```elixir {*|1|12}
 eval(e: expr, env): D \ {E,I} = match e
     | cst(n) => cstE(env, n)
     | var(x) => varE(env, x)
@@ -261,11 +325,11 @@ eval(e: expr, env): D \ {E,I} = match e
 
 # Cumulative Abstract Semantics
 
-*Elimination* interfaces eliminate the source syntax and have access to interpretation ecosystem (introduction, lowering interfaces).
+- *Elimination* interfaces eliminate the source syntax and have access to interpretation ecosystem (introduction, lowering interfaces).
 
-*Introduction* interfaces provide abstract-domain specific semantics to an evaluator.
+- *Introduction* interfaces provide abstract-domain specific semantics to an evaluator.
 
-*Lowering* interfaces provide abstract domain operators.
+- *Lowering* interfaces provide abstract domain operators.
 
 ---
 

@@ -114,7 +114,7 @@ def match_to_fold
     def seqE(st, s1, s2) = {
       val (v1, st1) = resume((S(s1), st))
       val (v2, st2) = resume((S(s2), st1))
-      resume((S(s2), st1))
+      // resume((S(s2), st1)) <- typo before adding intro handler i think
       do seqI(st1, st2, v1, v2)
     }
   }
