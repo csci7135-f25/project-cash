@@ -72,7 +72,7 @@ graph TD
 
 ---
 
-# Resumptions and Continuations
+# Resumptions for Bidirectionality
 
 ```mermaid
 graph LR
@@ -108,27 +108,25 @@ graph LR
 
 ````md magic-move
 ```elixir
-# forwards
-k(k(eval(s1,σ)), s2)
+def handle_forwards(s1, s2, k) =
+    k(k(eval(s1,σ)), s2)
+```
+```elixir {2}
+def handle_forwards(s1, s2, k) =
+    k(σ`, s2)
 ```
 ```elixir
-# forwards
-k(σ`, s2)
-```
-```elixir
-# forwards
 σ``
 ```
 ```elixir
-# backwards
-k(k(eval(s2,σ)), s1)
+def handle_backwards(s1, s2, k) =
+    k(k(eval(s2,σ)), s1)
+```
+```elixir{2}
+def handle_backwards(s1, s2, k) =
+    k(σ`, s1)
 ```
 ```elixir
-# backwards
-k(σ`, s1)
-```
-```elixir
-# backwards
 σ``
 ```
 
@@ -302,6 +300,7 @@ graph TD
 
 ::right::
 
+````md magic-move
 ```elixir {*|1|12}
 eval(e: expr, env): D \ {E,I} = match e
     | cst(n) => cstE(env, n)
@@ -316,10 +315,31 @@ eval(e: expr, env): D \ {E,I} = match e
         )
     | seq(e1, e2) => seqE(env, e1, e2)
 ```
+```elixir {*|5-8}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | seq(e1, e2) => seqE(env, e1, e2)
+
+def seqE(st, e1, e2) =
+    st` = k(st, e1)
+    st`` = k(st`, e2)
+    seqI(st`, st``) 
+```
+```elixir {5-8}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | seq(e1, e2) => seqE(env, e1, e2)
+
+def seqE(st, e1, e2) =
+    st` = k(st, e2)
+    st`` = k(st`, e1)
+    seqI(st`, st``) 
+```
+````
 
 ---
 
-# State Representations
+# Intro / Lower handlers for Relational State
 
 ---
 
