@@ -14,6 +14,7 @@ mdc: true
 hideInToc: true
 ---
 # Cumulative Semantics
+
 ## Generic Interfaces for Abstract Domain Accumulation
 
 <Toc v-click minDepth="1" maxDepth="2"></Toc>
@@ -43,6 +44,7 @@ Ident       x ::= string
 ```
 
 ---
+
 layout: two-cols
 ---
 
@@ -112,6 +114,7 @@ def eval_rev(e : expr, env_out): Set[str] = match e
 ````
 
 ---
+
 layout: two-cols
 ---
 
@@ -181,6 +184,7 @@ eval_rev(e: expr, env): D \ {I} = match e
 ````
 
 ---
+
 layout: two-cols
 ---
 
@@ -253,6 +257,15 @@ eval(e: expr, env): D \ {E,I} = match e
 
 # State Representations
 
+---
+
+# Cumulative Abstract Semantics
+
+*Elimination* interfaces eliminate the source syntax and have access to interpretation ecosystem (introduction, lowering interfaces).
+
+*Introduction* interfaces provide abstract-domain specific semantics to an evaluator.
+
+*Lowering* interfaces provide abstract domain operators.
 
 ---
 
