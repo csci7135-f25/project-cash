@@ -10,7 +10,7 @@ import json
 import map
 import scanner
 
-type Interval = (Int, Int)
+type Interval = (Option[Int], Option[Int])
 
 type IntervalDomain {
   Bot()
@@ -22,53 +22,91 @@ type IntervalDomain {
 def addInterval(i1: Interval, i2: Interval): Interval = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  (low1 + low2, high1 + high2)
+  val low = (low1, low2) match {
+    case (Some(a), Some(b)) => Some(a + b)
+    case _ => None()
+  }
+  val high = (high1, high2) match {
+    case (Some(a), Some(b)) => Some(a + b)
+    case _ => None()
+  }
+  (low, high)
 }
 
 def subInterval(i1: Interval, i2: Interval): Interval = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  (low1 - high2, high1 - low2)
+  val low = (low1, high2) match {
+    case (Some(a), Some(b)) => Some(a - b)
+    case _ => None()
+  }
+  val high = (high1, low2) match {
+    case (Some(a), Some(b)) => Some(a - b)
+    case _ => None()
+  }
+  (low, high)
 }
 
 def intervalFromInt(n: Int): Interval = {
-  (n, n)
+  (Some(n), Some(n))
 }
 
 def intervalLt(i1: Interval, i2: Interval): Bool = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  high1 < low2
+  (high1, low2) match {
+    case (Some(h1), Some(l2)) => h1 < l2
+    case _ => false
+  }
 }
 
 def intervalGt(i1: Interval, i2: Interval): Bool = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  low1 > high2
+  (low1, high2) match {
+    case (Some(l1), Some(h2)) => l1 > h2
+    case _ => false
+  }
 }
 
 def intervalLe(i1: Interval, i2: Interval): Bool = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  high1 <= low2
+  (high1, low2) match {
+    case (Some(h1), Some(l2)) => h1 <= l2
+    case _ => false
+  }
 }
 
 def intervalGe(i1: Interval, i2: Interval): Bool = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  low1 >= high2
+  (low1, high2) match {
+    case (Some(l1), Some(h2)) => l1 >= h2
+    case _ => false
+  }
 }
 
 def intervalOverlap(i1: Interval, i2: Interval): Bool = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  not ((high1 < low2) || (high2 < low1))
+  val disjoint1 = (high1, low2) match { case (Some(h1), Some(l2)) => h1 < l2 case _ => false }
+  val disjoint2 = (high2, low1) match { case (Some(h2), Some(l1)) => h2 < l1 case _ => false }
+  not (disjoint1 || disjoint2)
 }
 
 def intervalJoin(i1: Interval, i2: Interval): Interval = {
   val (low1, high1) = i1
   val (low2, high2) = i2
-  (min(low1, low2), max(high1, high2))
+  val low = (low1, low2) match {
+    case (Some(a), Some(b)) => Some(min(a,b))
+    case _ => None()
+  }
+  val high = (high1, high2) match {
+    case (Some(a), Some(b)) => Some(max(a,b))
+    case _ => None()
+  }
+  (low, high)
 }
 
 effect get(st: State[IntervalDomain], x: String): IntervalDomain
@@ -241,13 +279,19 @@ def run(prog: Prog, init: State[IntervalDomain]): (IntervalDomain, State[Interva
   with eqI[IntervalDomain] {
     def eqI(st, d1, d2) =
       (d1, d2) match {
-        case (Interval(i1), Interval(i2)) => {
-          val (l1,h1) = i1
-          val (l2,h2) = i2
-          if (l1 == h1 && l2 == h2 && l1 == l2) resume((Bool(true), st))
-          else if (not (intervalOverlap(i1, i2))) resume((Bool(false), st))
-          else resume((Top(), st))
-        }
+            case (Interval(i1), Interval(i2)) => {
+              val (l1,h1) = i1
+              val (l2,h2) = i2
+              (l1, h1, l2, h2) match {
+                case (Some(a), Some(b), Some(c), Some(d)) =>
+                  if (a == b && c == d && a == c) resume((Bool(true), st))
+                  else if (not (intervalOverlap(i1, i2))) resume((Bool(false), st))
+                  else resume((Top(), st))
+                case _ =>
+                  if (not (intervalOverlap(i1, i2))) resume((Bool(false), st))
+                  else resume((Top(), st))
+              }
+            }
         case (Bool(b1), Bool(b2)) => resume((Bool(b1 == b2), st))
         case (Bot(), _) => resume((Bot(), st))
         case (_, Bot()) => resume((Bot(), st))
@@ -332,7 +376,7 @@ namespace test {
     with on[WrongFormat].panic
     with on[IOError].panic
     val empty: Map[String, IntervalDomain] = map::empty(box compareStringBytes)
-    val init = empty.put("y", Interval((0, 10)))
+    val init = empty.put("y", Interval((Some(0), Some(10))))
 
     val arithJson: String = filesystem::readFile("pylang/tests/testIntervalArith.json")
     feed(arithJson) {

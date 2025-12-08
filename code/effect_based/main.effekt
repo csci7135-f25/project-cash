@@ -1,0 +1,4 @@
+def main() = {
+  val a: Option[Int] = Some(10)
+  println(a)
+}
