@@ -1,0 +1,349 @@
+module interval
+
+import pylang/interp
+import pylang/pyconv
+import pylang/syntax
+
+import io/error
+import io/filesystem
+import json
+import map
+import scanner
+
+type Interval = (Int, Int)
+
+type IntervalDomain {
+  Bot()
+  Interval(i: Interval)
+  Bool(b: Bool)
+  Top()
+}
+
+def addInterval(i1: Interval, i2: Interval): Interval = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  (low1 + low2, high1 + high2)
+}
+
+def subInterval(i1: Interval, i2: Interval): Interval = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  (low1 - high2, high1 - low2)
+}
+
+def intervalFromInt(n: Int): Interval = {
+  (n, n)
+}
+
+def intervalLt(i1: Interval, i2: Interval): Bool = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  high1 < low2
+}
+
+def intervalGt(i1: Interval, i2: Interval): Bool = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  low1 > high2
+}
+
+def intervalLe(i1: Interval, i2: Interval): Bool = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  high1 <= low2
+}
+
+def intervalGe(i1: Interval, i2: Interval): Bool = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  low1 >= high2
+}
+
+def intervalOverlap(i1: Interval, i2: Interval): Bool = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  not ((high1 < low2) || (high2 < low1))
+}
+
+def intervalJoin(i1: Interval, i2: Interval): Interval = {
+  val (low1, high1) = i1
+  val (low2, high2) = i2
+  (min(low1, low2), max(high1, high2))
+}
+
+effect get(st: State[IntervalDomain], x: String): IntervalDomain
+effect update(st: State[IntervalDomain], x: String, v: IntervalDomain): State[IntervalDomain]
+
+def match_to_fold
+  { prog: => (IntervalDomain, State[IntervalDomain]) / {Elimination[IntervalDomain]} } : (IntervalDomain, State[IntervalDomain]) /
+  {
+    unitI[IntervalDomain],
+    intI[IntervalDomain],
+    boolI[IntervalDomain],
+    varI[IntervalDomain],
+    asgnI[IntervalDomain],
+    plusI[IntervalDomain],
+    minusI[IntervalDomain],
+    notI[IntervalDomain],
+    eqI[IntervalDomain],
+    ltI[IntervalDomain],
+    gtI[IntervalDomain],
+    leI[IntervalDomain],
+    geI[IntervalDomain],
+    ifI[IntervalDomain],
+    whileI[IntervalDomain],
+    seqI[IntervalDomain]
+  } =
+{
+  try {
+    prog()
+  }
+  with Elimination[IntervalDomain] {
+    def varE(st, x) = {
+      do varI(st, x)
+    }
+
+    def asgnE(st, x, vExpr) = {
+      val (vRes, st1) = resume((E(vExpr), st))
+      do asgnI(st1, x, vRes)
+    }
+
+    def plusE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do plusI(st2, v1, v2)
+    }
+
+    def minusE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do minusI(st2, v1, v2)
+    }
+
+    def notE(st, e) = {
+      val (v, st1) = resume((E(e), st))
+      do notI(st1, v)
+    }
+
+    def eqE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do eqI(st2, v1, v2)
+    }
+
+    def ltE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do ltI(st2, v1, v2)
+    }
+
+    def gtE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do gtI(st2, v1, v2)
+    }
+
+    def leE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do leI(st2, v1, v2)
+    }
+
+    def geE(st, e1, e2) = {
+      val (v1, st1) = resume((E(e1), st))
+      val (v2, st2) = resume((E(e2), st1))
+      do geI(st2, v1, v2)
+    }
+
+    def ifE(st, guardExpr, thenStmt, elseStmt) = {
+      val (guardVal, st1) = resume((E(guardExpr), st))
+      val (thenRes, st2) = resume((S(thenStmt), st1)) // cont
+      val (elseRes, st3) = resume((S(elseStmt), st1)) // cont
+      do ifI(st2, st3, guardVal, thenRes, elseRes)
+    }
+
+    def whileE(st, guardExpr, bodyStmt) = {
+      val (guardVal, st1) = resume((E(guardExpr), st))
+      val (bodyVal, st2) = resume((S(bodyStmt), st1))
+      val (wV, wS) = do whileI(st1, st2, guardVal, bodyVal)
+      wV match {
+        case Bool(true) => resume((S(While(guardExpr, bodyStmt)), st2))
+        case _ => resume((E(Unit()), st1))
+      }
+    }
+
+    def seqE(st, s1, s2) = {
+      val (v1, st1) = resume((S(s1), st))
+      val (v2, st2) = resume((S(s2), st1))
+      resume((S(s2), st1))
+      do seqI(st1, st2, v1, v2)
+    }
+  }
+}
+
+
+def run(prog: Prog, init: State[IntervalDomain]): (IntervalDomain, State[IntervalDomain]) = {
+  try {
+    with match_to_fold()
+    eval((prog, init))
+  }
+  with intI[IntervalDomain] { (st, i) =>
+    val result = Interval(intervalFromInt(i))
+    resume((result, st))
+  }
+  with boolI[IntervalDomain] { (st, b) =>
+    val result = Bool(b)
+    resume((result, st))
+  }
+  with unitI[IntervalDomain] { (st) =>
+    val result = Top()
+    resume((result, st))
+  }
+  with varI[IntervalDomain] { (st, x) =>
+    val m: Map[String, IntervalDomain] = st match {case St(a) => a}
+    val v = map::get[String,IntervalDomain](m, x) match {
+      case Some(i) => i
+      case None() => Top()
+    }
+    resume((v, st))
+  }
+  with asgnI[IntervalDomain] { (st, x, v) =>
+    val m = st match {case St(a) => a}
+    val newState = m.put(x, v)
+    resume((Top(), St(newState)))
+  }
+  with plusI[IntervalDomain] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (Interval(i1), Interval(i2)) => resume((Interval(addInterval(i1, i2)), st))
+      case (Bot(), _) => resume((Bot(), st))
+      case (_, Bot()) => resume((Bot(), st))
+      case _ => resume((Top(), st))
+    }
+  }
+  with minusI[IntervalDomain] { (st, d1, d2) =>
+    (d1, d2) match {
+      case (Interval(i1), Interval(i2)) => resume((Interval(subInterval(i1, i2)), st))
+      case (Bot(), _) => resume((Bot(), st))
+      case (_, Bot()) => resume((Bot(), st))
+      case _ => resume((Top(), st))
+    }
+  }
+
+  with notI[IntervalDomain] { (st, d) =>
+    d match {
+      case Bool(true) => resume((Bool(false), st))
+      case Bool(false) => resume((Bool(true), st))
+      case Bot() => resume((Bot(), st))
+      case _ => resume((Top(), st))
+    }
+  }
+
+  with eqI[IntervalDomain] {
+    def eqI(st, d1, d2) =
+      (d1, d2) match {
+        case (Interval(i1), Interval(i2)) => {
+          val (l1,h1) = i1
+          val (l2,h2) = i2
+          if (l1 == h1 && l2 == h2 && l1 == l2) resume((Bool(true), st))
+          else if (not (intervalOverlap(i1, i2))) resume((Bool(false), st))
+          else resume((Top(), st))
+        }
+        case (Bool(b1), Bool(b2)) => resume((Bool(b1 == b2), st))
+        case (Bot(), _) => resume((Bot(), st))
+        case (_, Bot()) => resume((Bot(), st))
+        case _ => resume((Top(), st))
+      }
+  }
+
+  with ltI[IntervalDomain] {
+    def ltI(st, d1, d2) =
+      (d1, d2) match {
+        case (Interval(i1), Interval(i2)) =>
+          if (intervalLt(i1, i2)) resume((Bool(true), st))
+          else if (not (intervalOverlap(i1, i2)) && intervalGt(i1, i2)) resume((Bool(false), st))
+          else resume((Top(), st))
+        case (Bool(_), _) => resume((Top(), st))
+        case (Bot(), _) => resume((Bot(), st))
+        case (_, Bot()) => resume((Bot(), st))
+        case _ => resume((Top(), st))
+      }
+  }
+  with gtI[IntervalDomain] {
+    def gtI(st, d1, d2) =
+      (d1, d2) match {
+        case (Interval(i1), Interval(i2)) =>
+          if (intervalGt(i1, i2)) resume((Bool(true), st))
+          else if (not (intervalOverlap(i1, i2)) && intervalLt(i1, i2)) resume((Bool(false), st))
+          else resume((Top(), st))
+        case (Bool(_), _) => resume((Top(), st))
+        case (Bot(), _) => resume((Bot(), st))
+        case (_, Bot()) => resume((Bot(), st))
+        case _ => resume((Top(), st))
+      }
+  }
+  with leI[IntervalDomain] {
+    def leI(st, d1, d2) =
+      (d1, d2) match {
+        case (Interval(i1), Interval(i2)) =>
+          if (intervalLe(i1, i2)) resume((Bool(true), st))
+          else if (not (intervalOverlap(i1, i2)) && intervalGt(i1, i2)) resume((Bool(false), st))
+          else resume((Top(), st))
+        case (Bool(_), _) => resume((Top(), st))
+        case (Bot(), _) => resume((Bot(), st))
+        case (_, Bot()) => resume((Bot(), st))
+        case _ => resume((Top(), st))
+      }
+  }
+  with geI[IntervalDomain] {
+    def geI(st, d1, d2) =
+      (d1, d2) match {
+        case (Interval(i1), Interval(i2)) =>
+          if (intervalGe(i1, i2)) resume((Bool(true), st))
+          else if (not (intervalOverlap(i1, i2)) && intervalLt(i1, i2)) resume((Bool(false), st))
+          else resume((Top(), st))
+        case (Bool(_), _) => resume((Top(), st))
+        case (Bot(), _) => resume((Bot(), st))
+        case (_, Bot()) => resume((Bot(), st))
+        case _ => resume((Top(), st))
+      }
+  }
+  with ifI[IntervalDomain] {(stT, stF, g, t, f) =>
+    g match {
+      case Bool(true) => resume((t, stT))
+      case Bool(false) => resume((f, stF))
+      case Bot() => resume((Bot(), stF))
+      case _ => resume((Top(), stF))
+    }
+  }
+  with whileI[IntervalDomain] {(stG, stB, g, b) =>
+    g match {
+      case Bool(true) => resume((g, stG))
+      case Bool(false) => resume((g, stB))
+      case Bot() => resume((Bot(), stG))
+      case _ => resume((Top(), stG))
+    }
+  }
+  with seqI[IntervalDomain] {(_, st2, _, v2) => resume((v2, st2))}
+}
+
+
+namespace test {
+  def main() = {
+    with on[WrongFormat].panic
+    with on[IOError].panic
+    val empty: Map[String, IntervalDomain] = map::empty(box compareStringBytes)
+    val init = empty.put("y", Interval((0, 10)))
+
+    val arithJson: String = filesystem::readFile("pylang/tests/testIntervalArith.json")
+    feed(arithJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val arithExpr = pythonAstToProg(jsonVal)
+      val (_, s) = run(arithExpr, St(init))
+      val m = s match {case St(a) => a}
+      println("--arith ex--")
+      m.foreach { (k,v) => inspect(k); inspect(v)}
+      println("------------")
+    }
+  }
+}

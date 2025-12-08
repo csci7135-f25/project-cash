@@ -1,0 +1,70 @@
+{
+  "type": "Module",
+  "body": [
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "BinOp",
+        "left": {
+          "type": "BinOp",
+          "left": {
+            "type": "BinOp",
+            "left": {
+              "type": "BinOp",
+              "left": {
+                "type": "Constant",
+                "value": 40,
+                "kind": null
+              },
+              "op": {
+                "type": "Add"
+              },
+              "right": {
+                "type": "Constant",
+                "value": 10,
+                "kind": null
+              }
+            },
+            "op": {
+              "type": "Sub"
+            },
+            "right": {
+              "type": "Constant",
+              "value": 5,
+              "kind": null
+            }
+          },
+          "op": {
+            "type": "Add"
+          },
+          "right": {
+            "type": "Constant",
+            "value": 6,
+            "kind": null
+          }
+        },
+        "op": {
+          "type": "Add"
+        },
+        "right": {
+          "type": "Name",
+          "id": "y",
+          "ctx": {
+            "type": "Load"
+          }
+        }
+      },
+      "type_comment": null
+    }
+  ],
+  "type_ignores": []
+}
