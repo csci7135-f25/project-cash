@@ -1,4 +1,16 @@
-import CumulativeSemantics
+import CumulativeSemantics.Tests.WhilePerf
 
-def main : IO Unit :=
-  IO.println s!"Hello, {hello}!"
+def main (args: List String): IO Unit := do
+  if args.contains "--while_perf" then
+    match args.findIdx? (· == "--iterations") with
+    | some idx =>
+      if idx + 1 < args.length then
+        match (args[idx + 1]!).toNat? with
+        | some iter =>
+          let _ ← test_while iter
+        | none => IO.println "Error: iterations argument must be a number"
+      else
+        IO.println "Error: --iterations requires a number argument"
+    | none => IO.println "Error: --while_perf requires --iterations <number>"
+  else
+    IO.println s!"Unrecognized arguments: {args}"
