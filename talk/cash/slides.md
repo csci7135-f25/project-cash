@@ -29,13 +29,13 @@ hideInToc: true
 
 ````md magic-move
 ```elixir
-eval_forward(syntax, state): (Int, state')
+eval_forward(syntax, state): (Int, state`)
 ```
 ```elixir
-eval_forward_generic[D](syntax, state): (D, state')
+eval_forward_generic[D](syntax, state): (D, state`)
 ```
 ```elixir
-eval_bidirectional_generic[D](syntax, state): (D, state')
+eval_bidirectional_generic[D](syntax, state): (D, state`)
 ```
 ````
 
@@ -472,6 +472,10 @@ Standard Recipe:
 
 ---
 
+# Questions?
+
+---
+
 # Performance
 
 - running the following Python program in the **Concrete Domain** with our
@@ -513,7 +517,3 @@ Benchmark 1: ./out/concrete
   Range (min … max):   605.0 ms … 639.6 ms    10 runs
 ```
 ````
-
----
-
-# Questions?
