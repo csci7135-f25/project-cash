@@ -1,6 +1,6 @@
 ---
 # try also 'default' to start simple
-theme: default
+theme: apple-basic
 title: Cumulative Semantics
 info: |
   ## Cumulative Semantics
