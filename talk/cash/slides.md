@@ -13,7 +13,7 @@ transition: slide-left
 mdc: true
 hideInToc: true
 ---
-# Cumulative Semantics
+# Cumulative Abstract Semantics
 
 ## Generic Interfaces for Abstract Domain Accumulation
 
@@ -471,3 +471,5 @@ Standard Recipe:
 </div>
 
 ---
+
+# Questions?

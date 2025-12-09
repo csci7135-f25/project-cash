@@ -5,6 +5,23 @@ abbrev Store (δ : Type) := Std.HashMap Ident δ
 
 abbrev ConcStore := Store ConcreteValue
 
+instance : ToString ConcreteValue where
+  toString v := match v with
+    | .Bot => "⊥"
+    | .Top => "⊤"
+    | .Num n => s!"{n}"
+    | .Bool b => s!"{b}"
+    | .Unit => "()"
+
+instance : Repr ConcStore where
+  reprPrec ρ _ :=
+    let entries := (Std.HashMap.toList ρ).map (fun (k, v) => s!"{k} ↦ {v}")
+    "{" ++ String.intercalate ", " entries ++ "}"
+
+instance : ToString ConcStore where
+  toString ρ := toString (repr ρ)
+
+
 instance : BEq ConcreteValue where
   beq v1 v2 := match v1, v2 with
     | .Bot, .Bot => true
@@ -196,7 +213,9 @@ instance {σ δ : Type} [Assume σ δ] [WhileI σ δ] [Inhabited δ] : WhileE σ
     let k : σ → σ := fun σ =>
       let (v, σ') := eval (.Exp e) σ
       Assume.assume v (eval (.Stm body) σ').snd
-    (default, @WhileI.while_ σ δ _ ρ k)
+    let invariant := @WhileI.while_ σ δ _ ρ k
+    let final := eval (.Exp e) invariant
+    (default, Assume.assumef final.1 final.2)
 
 instance{σ δ: Type} [Bottom σ] [LatOrder σ]: WhileI σ δ where
   while_ (ρ:σ) cont := lfp cont ρ

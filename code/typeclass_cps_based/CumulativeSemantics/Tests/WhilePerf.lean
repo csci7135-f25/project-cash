@@ -11,10 +11,15 @@ def test_while(iter:Nat) : IO Nat := do
         )
     )
   let emptyState : ConcStore := Std.HashMap.emptyWithCapacity 10
-
+  IO.println s!"Python:
+      x = 0
+      while x < {iter}:
+          x += 1
+  "
   IO.println s!"Running while loop with {iter} iterations..."
   -- run the program
-  let (_, _) :=  conc_eval test_prog emptyState
+  let (_, st) :=  conc_eval test_prog emptyState
 
   IO.println s!"Completed while loop with {iter} iterations"
+  IO.println s!"Final state: {st}"
   return iter
