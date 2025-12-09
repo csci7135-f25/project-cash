@@ -5,6 +5,23 @@ abbrev Store (δ : Type) := Std.HashMap Ident δ
 
 abbrev ConcStore := Store ConcreteValue
 
+instance : ToString ConcreteValue where
+  toString v := match v with
+    | .Bot => "⊥"
+    | .Top => "⊤"
+    | .Num n => s!"{n}"
+    | .Bool b => s!"{b}"
+    | .Unit => "()"
+
+instance : Repr ConcStore where
+  reprPrec ρ _ :=
+    let entries := (Std.HashMap.toList ρ).map (fun (k, v) => s!"{k} ↦ {v}")
+    "{" ++ String.intercalate ", " entries ++ "}"
+
+instance : ToString ConcStore where
+  toString ρ := toString (repr ρ)
+
+
 instance : BEq ConcreteValue where
   beq v1 v2 := match v1, v2 with
     | .Bot, .Bot => true

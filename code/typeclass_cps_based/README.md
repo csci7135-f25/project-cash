@@ -20,7 +20,7 @@ This irectory conatins the source code for the typeclass based implementation of
 
 ## Running Tests
 
-To view tests comparing the monolothic and concrete interpetation, go to the 'Tests' directory and view the ConcvMono.lean file.
+To view tests comparing the monolithic and concrete interpretation, go to the 'Tests' directory and view the `ConcvMono.lean` file.
 
 To run a performance test on a while loop program, you can execute the following command in the terminal:
 

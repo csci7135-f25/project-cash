@@ -7,7 +7,15 @@ inductive ConcreteValue where
   | Bool : Bool → ConcreteValue
   | Unit
   | Bot
-deriving Repr
+
+instance : Repr ConcreteValue where
+  reprPrec v _ := match v with
+    | .Top => "⊤"
+    | .Bot => "⊥"
+    | .Num n => s!"{n}"
+    | .Bool b => s!"{b}"
+    | .Unit => "()"
+
 
 instance : Inhabited ConcreteValue where
   default := ConcreteValue.Unit
