@@ -334,7 +334,7 @@ def seqE(st, e1, e2) =
 
 ---
 
-# Lowering Handlers
+# Lowering Witnesses
 
 ````md magic-move
 ```elixir {3-4}
