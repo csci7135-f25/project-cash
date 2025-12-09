@@ -337,7 +337,13 @@ def seqE(st, e1, e2) =
 # Lowering Handlers
 
 ````md magic-move
-```elixir {3-4|6-11}
+```elixir {3-4}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | ifnz(e1, e2, e3) =>
+        ifE(env, e1, e3, e2)
+```
+```elixir {6-11}
 eval(e: expr, env): D \ {E,I} = match e
     ...
     | ifnz(e1, e2, e3) =>
@@ -349,7 +355,19 @@ def ifE(st, e1, e2, e3) =
     st3 = k(st1, e3)
     ifI(g, st2 , st3)
 ```
-```elixir {12-14}
+```elixir {7|8|9}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | ifnz(e1, e2, e3) =>
+        ifE(env, e1, e3, e2)
+
+def ifE(st, e1, e2, e3) =
+    (g, st1) = k(st, e1) # e1 ⇓ st
+    st2 = k(st1, e2)     # e2 ⇓ st2
+    st3 = k(st1, e3)     # e3 ⇓ st3
+    ifI(g, st2 , st3)
+```
+```elixir {12-14|13|14}
 eval(e: expr, env): D \ {E,I} = match e
     ...
     | ifnz(e1, e2, e3) =>
@@ -362,8 +380,8 @@ def ifE(st, e1, e2, e3) =
     ifI(g, st2 , st3)
 
 def ifI(g, st2, st3) = match g
-    | True  -> st2
-    | False -> st3
+    | True  -> st2 # only use "then" state
+    | False -> st3 # only use "else" state
 ```
 ```elixir {12-16|14-15|13}
 eval(e: expr, env): D \ {E,I} = match e
