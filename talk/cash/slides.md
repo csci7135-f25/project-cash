@@ -447,7 +447,7 @@ layout: two-cols
 ---
 # Changes to the Recipe
 
-Standard Recipe:
+## Standard Recipe:
 
  1. Syntax
  2. Concrete Interpreter
@@ -458,6 +458,9 @@ Standard Recipe:
 ::right::
 
 <div v-click>
+
+<br/>
+<br/>
 
 ## New Recipe:
 
