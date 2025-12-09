@@ -29,13 +29,13 @@ hideInToc: true
 
 ````md magic-move
 ```elixir
-eval_forward(syntax, state): (Int, state')
+eval_forward(syntax, state): (Int, state`)
 ```
 ```elixir
-eval_forward_generic[D](syntax, state): (D, state')
+eval_forward_generic[D](syntax, state): (D, state`)
 ```
 ```elixir
-eval_bidirectional_generic[D](syntax, state): (D, state')
+eval_bidirectional_generic[D](syntax, state): (D, state`)
 ```
 ````
 
