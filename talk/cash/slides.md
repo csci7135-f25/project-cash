@@ -355,7 +355,7 @@ def ifE(st, e1, e2, e3) =
     st3 = k(st1, e3)
     ifI(g, st2 , st3)
 ```
-```elixir {7|8|9}
+```elixir {7|8|9|10}
 eval(e: expr, env): D \ {E,I} = match e
     ...
     | ifnz(e1, e2, e3) =>
@@ -365,7 +365,7 @@ def ifE(st, e1, e2, e3) =
     (g, st1) = k(st, e1) # e1 ⇓ st
     st2 = k(st1, e2)     # e2 ⇓ st2
     st3 = k(st1, e3)     # e3 ⇓ st3
-    ifI(g, st2 , st3)
+    ifI(g, st2 , st3) # pass resulting states to intro
 ```
 ```elixir {12-14|13|14}
 eval(e: expr, env): D \ {E,I} = match e
@@ -377,7 +377,7 @@ def ifE(st, e1, e2, e3) =
     (g, st1) = k(st, e1)
     st2 = k(st1, e2)
     st3 = k(st1, e3)
-    ifI(g, st2 , st3)
+    ifI(g, st2 , st3) 
 
 def ifI(g, st2, st3) = match g
     | True  -> st2 # only use "then" state
@@ -396,7 +396,7 @@ def ifE(st, e1, e2, e3) =
     ifI(g, st2 , st3)
 
 def ifI(g, st2, st3) =
-    joinL(
+    joinL( # deterime how to return / combine states
         assumeL(g, st2), 
         assumenotL(g, st3)
     )
@@ -407,9 +407,9 @@ def ifI(g, st2, st3) =
 
 # Cumulative Abstract Semantics
 
-- *Elimination* witnesses leverage continuations to eliminate the source syntax 
+- *Elimination* handlers leverage continuations to eliminate the source syntax 
 - *Introduction* witnesses provide abstract-domain specific semantics
-- *Lowering* witnesses provide reusable abstract domain operators
+- *Lowering* witnesses provide flow insensitive, reusable abstract domain operators
 
 ```mermaid
 graph TB
@@ -469,6 +469,50 @@ Standard Recipe:
  6. Abstract Interpreter (Intro, *Elim*)
 
 </div>
+
+---
+
+# Performance
+
+- running the following Python program in the **Concrete Domain** with our
+    - Lean4 typeclass and CPS implementation *compiles to a C++ binary*
+    - Effekt scoped effekt system implementation *compiles to LLVM*
+```python
+x = 0
+while x < 1000000
+    x += 1
+print(x)
+```
+
+````md magic-move
+```sh
+# running python test code with performance tool 'hyperfine'
+hyperfine 'python3 while_perf.py'
+```
+```sh
+Benchmark 1: python3 while_perf.py
+  Time (mean ± σ):      53.3 ms ±   6.7 ms    [User: 48.5 ms, System: 3.3 ms]
+  Range (min … max):    45.7 ms …  76.8 ms    61 runs
+```
+```sh
+# run lean4 binary with performance tool 'hyperfine'
+hyperfine "./.lake/build/bin/cumulativesemantics --while_perf --iterations 1000000"
+```
+```sh
+Benchmark 1: ./.lake/build/bin/cumulativesemantics --while_perf --iterations 1000000
+  Time (mean ± σ):     321.2 ms ±   6.3 ms    [User: 315.1 ms, System: 2.7 ms]
+  Range (min … max):   313.6 ms … 333.6 ms    10 runs
+```
+```sh
+# run effekt LLVM binary with perfomance tool 'hyperfine'
+hyperfine ./out/concrete
+```
+```sh
+Benchmark 1: ./out/concrete
+  Time (mean ± σ):     624.9 ms ±  10.1 ms    [User: 622.6 ms, System: 1.9 ms]
+  Range (min … max):   605.0 ms … 639.6 ms    10 runs
+```
+````
 
 ---
 
