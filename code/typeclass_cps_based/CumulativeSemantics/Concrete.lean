@@ -213,7 +213,9 @@ instance {σ δ : Type} [Assume σ δ] [WhileI σ δ] [Inhabited δ] : WhileE σ
     let k : σ → σ := fun σ =>
       let (v, σ') := eval (.Exp e) σ
       Assume.assume v (eval (.Stm body) σ').snd
-    (default, @WhileI.while_ σ δ _ ρ k)
+    let invariant := @WhileI.while_ σ δ _ ρ k
+    let final := eval (.Exp e) invariant
+    (default, Assume.assumef final.1 final.2)
 
 instance{σ δ: Type} [Bottom σ] [LatOrder σ]: WhileI σ δ where
   while_ (ρ:σ) cont := lfp cont ρ
