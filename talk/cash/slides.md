@@ -351,6 +351,10 @@ def seqE(st, e1, e2) =
 
 ```mermaid
 graph TB
+    CumulativeSemantics["Cumulative Semantics"]
+    CumulativeSemantics --> Witnesses
+    CumulativeSemantics --> Handlers
+    
     subgraph Witnesses["Introduction Witnesses"]
         Plus["plusI[D](a, b): D"]
         Plus --> PlusInt["plusI[Int](a, b) = a + b"]
@@ -363,6 +367,7 @@ graph TB
         Seq --> SeqReverse["seqE(st, e1, e2) = <br/>  k(k(st, e2), e1)"]
     end
     
+    style CumulativeSemantics fill:#e1d5f5,stroke:#6a1b9a,stroke-width:4px,color:#000
     style Plus fill:#e1f5ff,stroke:#0066cc,stroke-width:3px,color:#000
     style PlusInt fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
     style PlusInterval fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
