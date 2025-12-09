@@ -345,11 +345,35 @@ def seqE(st, e1, e2) =
 
 # Cumulative Abstract Semantics
 
-- *Elimination* interfaces eliminate the source syntax and have access to interpretation ecosystem (introduction, lowering interfaces).
+- *Elimination* handlers leverage continuations to eliminate the source syntax 
+    - *Introduction* witnesses provide abstract-domain specific semantics
+    - *Lowering* witnesses provide abstract domain operators
 
-- *Introduction* interfaces provide abstract-domain specific semantics to an evaluator.
-
-- *Lowering* interfaces provide abstract domain operators.
+```mermaid
+graph TB
+    subgraph Witnesses["Introduction Witnesses"]
+        Plus["plusI[D](a, b): D"]
+        Plus --> PlusInt["plusI[Int](a, b) = a + b"]
+        Plus --> PlusInterval["plusI[Interval](a, b) = <br/>  (a.l + b.l, a.h + b.h)"]
+    end
+    
+    subgraph Handlers["Elimination Handlers"]
+        Seq["seq"]
+        Seq --> SeqForward["seqE(st, e1, e2) = <br/>  k(k(st, e1), e2)"]
+        Seq --> SeqReverse["seqE(st, e1, e2) = <br/>  k(k(st, e2), e1)"]
+    end
+    
+    style Plus fill:#e1f5ff,stroke:#0066cc,stroke-width:3px,color:#000
+    style PlusInt fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
+    style PlusInterval fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,color:#000
+    
+    style Seq fill:#fff4e1,stroke:#ff9800,stroke-width:3px,color:#000
+    style SeqForward fill:#ffccbc,stroke:#ff5722,stroke-width:2px,color:#000
+    style SeqReverse fill:#ffccbc,stroke:#ff5722,stroke-width:2px,color:#000
+    
+    style Witnesses fill:#f0f8ff,stroke:#0066cc,stroke-width:2px
+    style Handlers fill:#fff8f0,stroke:#ff9800,stroke-width:2px
+```
 
 ---
 
