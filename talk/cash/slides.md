@@ -21,11 +21,11 @@ hideInToc: true
 
 ---
 
-# What does it mean to accumulate semantics?
+# What Is Accumulation of Semantics?
 
-- parametric functions allow for the decoupling of return value
-    + but how can you parameterize the direction of evaluation?
-    + this goes lower than type level constructs
+- Parametric functions allow for the decoupling of return value
+    + But how can you parameterize the direction of evaluation?
+    + This goes lower than type level constructs
 
 ````md magic-move
 ```elixir
@@ -44,7 +44,7 @@ eval_bidirectional_generic[D](syntax, state): (D, state')
 # Interfaces and Witnesses
 
 - Type Classes allow polymorphism via the definition of an interface
-    - A witness is an implementation the obeys this interface
+    - A witness is an implementation that obeys this interface
 
 
 ```mermaid
@@ -301,18 +301,13 @@ graph TD
 ::right::
 
 ````md magic-move
-```elixir {*|1|12}
+```elixir {*|1|7}
 eval(e: expr, env): D \ {E,I} = match e
     | cst(n) => cstE(env, n)
     | var(x) => varE(env, x)
     | plus(e1, e2) => plusE(env, e1, e2)
     | ifnz(e1, e2, e3) =>
-        ifE(
-            env,
-            e1,
-            e3,
-            e2,
-        )
+        ifE(env, e1, e3, e2)
     | seq(e1, e2) => seqE(env, e1, e2)
 ```
 ```elixir {*|5-8}
@@ -339,15 +334,64 @@ def seqE(st, e1, e2) =
 
 ---
 
-# Intro / Lower handlers for Relational State
+# Lowering Handlers
+
+````md magic-move
+```elixir {3-4|6-11}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | ifnz(e1, e2, e3) =>
+        ifE(env, e1, e3, e2)
+
+def ifE(st, e1, e2, e3) =
+    (g, st1) = k(st, e1)
+    st2 = k(st1, e2)
+    st3 = k(st1, e3)
+    ifI(g, st2 , st3)
+```
+```elixir {12-14}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | ifnz(e1, e2, e3) =>
+        ifE(env, e1, e3, e2)
+
+def ifE(st, e1, e2, e3) =
+    (g, st1) = k(st, e1)
+    st2 = k(st1, e2)
+    st3 = k(st1, e3)
+    ifI(g, st2 , st3)
+
+def ifI(g, st2, st3) = match g
+    | True  -> st2
+    | False -> st3
+```
+```elixir {12-16|14-15|13}
+eval(e: expr, env): D \ {E,I} = match e
+    ...
+    | ifnz(e1, e2, e3) =>
+        ifE(env, e1, e3, e2)
+
+def ifE(st, e1, e2, e3) =
+    (g, st1) = k(st, e1)
+    st2 = k(st1, e2)
+    st3 = k(st1, e3)
+    ifI(g, st2 , st3)
+
+def ifI(g, st2, st3) =
+    joinL(
+        assumeL(g, st2), 
+        assumenotL(g, st3)
+    )
+```
+````
 
 ---
 
 # Cumulative Abstract Semantics
 
-- *Elimination* handlers leverage continuations to eliminate the source syntax 
-    - *Introduction* witnesses provide abstract-domain specific semantics
-    - *Lowering* witnesses provide abstract domain operators
+- *Elimination* witnesses leverage continuations to eliminate the source syntax 
+- *Introduction* witnesses provide abstract-domain specific semantics
+- *Lowering* witnesses provide reusable abstract domain operators
 
 ```mermaid
 graph TB
@@ -381,7 +425,31 @@ graph TB
 ```
 
 ---
-
+layout: two-cols
+---
 # Changes to the Recipe
+
+Standard Recipe:
+
+ 1. Syntax
+ 2. Concrete Interpreter
+ 3. Collect Semantics
+ 4. Abstract Domain
+ 5. Abstract Interpreter
+
+::right::
+
+<div v-click>
+
+## New Recipe:
+
+ 1. Syntax
+ 2. Generic Interfaces
+ 3. Concrete (Elim & Intro)
+ 4. Collecting (Elim)
+ 5. Abstract Domain (Lowering)
+ 6. Abstract Interpreter (Intro, *Elim*)
+
+</div>
 
 ---
