@@ -471,9 +471,12 @@ Standard Recipe:
 </div>
 
 ---
-
+hideInToc: true
+---
 # Questions?
 
+---
+hideInToc: true
 ---
 
 # Performance
