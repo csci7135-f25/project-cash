@@ -1,6 +1,6 @@
 ---
 # try also 'default' to start simple
-theme: seriph
+theme: default
 title: Cumulative Semantics
 info: |
   ## Cumulative Semantics
