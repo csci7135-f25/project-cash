@@ -472,6 +472,10 @@ Standard Recipe:
 
 ---
 
+# Questions?
+
+---
+
 # Performance
 
 - running the following Python program in the **Concrete Domain** with our
@@ -513,7 +517,3 @@ Benchmark 1: ./out/concrete
   Range (min … max):   605.0 ms … 639.6 ms    10 runs
 ```
 ````
-
----
-
-# Questions?
