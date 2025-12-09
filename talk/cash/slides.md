@@ -1,6 +1,6 @@
 ---
 # try also 'default' to start simple
-theme: apple-basic
+theme: default
 title: Cumulative Semantics
 info: |
   ## Cumulative Semantics
@@ -14,8 +14,8 @@ mdc: true
 hideInToc: true
 ---
 # Cumulative Abstract Semantics
-
 ## Generic Interfaces for Abstract Domain Accumulation
+Cade Lueker & Andrew Fox
 
 <Toc v-click minDepth="1" maxDepth="2"></Toc>
 
