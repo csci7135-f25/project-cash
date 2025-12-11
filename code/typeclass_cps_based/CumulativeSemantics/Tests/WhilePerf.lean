@@ -16,9 +16,36 @@ def test_while(iter:Nat) : IO Nat := do
       while x < {iter}:
           x += 1
   "
+  IO.println s! "Cumulative Semantics:"
   IO.println s!"Running while loop with {iter} iterations..."
   -- run the program
   let (_, st) :=  conc_eval test_prog emptyState
+
+  IO.println s!"Completed while loop with {iter} iterations"
+  IO.println s!"Final state: {st}"
+  return iter
+
+
+def test_while_mono(iter:Nat) : IO Nat := do
+  let test_prog : Prog :=
+    .Stm (
+      .Seq
+        (.Assign "x" (.Cst (.Num 0)))
+        (.While
+          (.Binop (.Var "x") (.Cst (.Num iter)) Op.Less)
+          (.Assign "x" (.Binop (.Var "x") (.Cst (.Num 1)) Op.Plus))
+        )
+    )
+  let emptyState : ConcStore := Std.HashMap.emptyWithCapacity 10
+  IO.println s!"Python:
+      x = 0
+      while x < {iter}:
+          x += 1
+  "
+  IO.println s!"Monolithic version:"
+  IO.println s!"Running while loop with {iter} iterations..."
+  -- run the program
+  let (_, st) :=  conc_eval_monolithic test_prog emptyState
 
   IO.println s!"Completed while loop with {iter} iterations"
   IO.println s!"Final state: {st}"

@@ -38,3 +38,11 @@ while (x < [iterations]) {
 ```
 
 You can then profile this with your preferred profiling tool to analyze performance.
+
+To compare to a monolithic interpreter in lean, use the `--mono` flag:
+
+```bash
+lake exe cumulativesemantics --while_perf --mono --iterations <iterations>
+```
+
+This will run the same loop using the monolithic interpreter implementation.

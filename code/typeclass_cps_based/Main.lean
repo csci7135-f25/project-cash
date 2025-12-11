@@ -7,7 +7,10 @@ def main (args: List String): IO Unit := do
       if idx + 1 < args.length then
         match (args[idx + 1]!).toNat? with
         | some iter =>
-          let _ ← test_while iter
+          if args.contains "--mono" then
+            let _ ← test_while_mono iter
+          else
+            let _ ← test_while iter
         | none => IO.println "Error: iterations argument must be a number"
       else
         IO.println "Error: --iterations requires a number argument"
