@@ -72,7 +72,7 @@ def dump_ast_json_file(input_file: str, output_file: str = None, indent: int = 2
 
 
 if __name__ == "__main__":
-    test_files = ["testArith.py", "testIntervalArith.py", "testAssgn.py", "testIf.py", "testNestedIfWhile.py", "testWhile.py", "testNot.py"]
+    test_files = ["testArith.py", "testIntervalWhile.py","testIntervalArith.py", "testAssgn.py", "testIf.py", "testNestedIfWhile.py", "testWhile.py", "testNot.py"]
     
     for test_file in test_files:
         try:
