@@ -1,0 +1,66 @@
+In this section, we examine two case studies of the cumulative abstract semantics: one realized in a native language with built-in support for algebraic effects and lexical handlers, Effekt ~\cite{Schuster2022}, and another realized via type classes in a more conventional functional language, Lean. Both implementations adhere to an identical conceptual scheme and yield extensionally equivalent analyses, thereby enabling a comparison in terms of runtime performance and relative implementation complexity.
+
+Our target language is a Python-like language, whose syntax is presented in Figure \ref{fig:python-syntax}.
+% 
+\begin{figure}
+    \centering
+    \begin{mathparsmall}
+    \begin{array}{lrcl}
+        \text{Identifiers} & x \\
+        \text{Numbers} & n & \in & \mathbb{R}\\
+        \text{Booleans} & b & := & \text{true}\mid \text{false}\\
+        \text{Concrete Values} & v & := & n \mid b \mid ()\\
+        \text{Operators} & op & := & + \mid - \mid \div \mid *\mid == \mid > \mid < \mid \text{and} \mid \text{or}\\
+        \text{Expressions} & e & := & \text{cst}(v) \mid \text{var}(x) \mid \text{binop}(e, e, op) \mid \text{neg}(e)\\
+        \text{Statements} & s & := & \text{skip} \mid \text{assign}(x, e) \mid \text{if}(e, s, s) \mid \text{seq}(s, s) \mid \text{while}(e, s) \\
+        \text{Program node} & p & := & s \mid e
+    \end{array}
+    \end{mathparsmall}
+    \caption{A python-like AST}
+    \label{fig:python-syntax}
+\end{figure}
+% % 
+% To evaluate the complexity associated with extending the language with new features, we introduce a single additional language feature in both versions after having made an interpreter:
+% % 
+% \begin{mathparsmall}
+%     \begin{array}{lrcl}
+%         \text{Expressions} & e & := & \cdots \mid \text{namedExpr}(x, e) \\
+%     \end{array}
+% \end{mathparsmall}
+% % 
+% The extended language would now include the two forms of assignment present in Python: (i) the traditional statement-level assignment and (ii) the “walrus” expression-level assignment (namedExpr). The latter behaves like a C assign statement where it mutates the store and returns the value assigned. With this, we can compare the number of lines of code required to extend the language accordingly.
+
+
+\subsection{Typeclass Based}\label{sec:eval-lean}
+\input{sections/andrew}
+
+\subsection{Effect Based}\label{sec:eval-effekt}
+\input{sections/cade}
+
+\subsection{Comparison of the Two Implementations}\label{sec:eval-comparison}
+% 
+To evaluate performance, we executed a simple while-loop program with varying iterations using the native Python interpreter, as well as the Lean4 and Effekt interpreters. Execution times were measured with the hyperfine benchmarking tool. The results are reported in Table \ref{tab:benchmark_results}. Although both cumulative semantic implementations introduce a non-negligible overhead, their performance remains within one order of magnitude of the Python interpreter, indicating reasonably good scaling behavior. The nearly constant run time of the Lean4 implementation for small input sizes suggests a substantial fixed overhead, likely associated with type-class resolution, but the subsequent growth in running time is moderate. In contrast, the Effekt-based implementation exhibited markedly superior performance, not yet exploding.
+% 
+ \begin{table}[th!]
+    \centering
+    \begin{tabular}{llcccc}
+        \toprule
+        \textbf{Implementation} & \textbf{Iterations ($N$)} & \textbf{Time (Mean $\pm$ $\sigma$)} & \textbf{User} & \textbf{System} & \textbf{Range} \\
+        \midrule
+        \multirow{3}{*}{Effekt LLVM} & 100,000 & $64.8 \text{ ms} \pm 1.2 \text{ ms}$   & $64.3 \text{ ms}$ & $0.4 \text{ ms}$ & $61.5 \text{ ms} \dots 66.8 \text{ ms}$ \\
+         & 10,000 & $7.5 \text{ ms} \pm 0.1 \text{ ms}$    & $7.2 \text{ ms}$  & $0.2 \text{ ms}$ & $7.2 \text{ ms} \dots 8.3 \text{ ms}$ \\
+         & 1,000 & $1.7 \text{ ms} \pm 0.1 \text{ ms}$    & $1.4 \text{ ms}$  & $0.2 \text{ ms}$ & $1.6 \text{ ms} \dots 2.4 \text{ ms}$ \\
+        \midrule
+        \multirow{3}{*}{Lean4} & 100,000 & $126.7 \text{ ms} \pm 326.8 \text{ ms}$ & $20.1 \text{ ms}$ & $5.0 \text{ ms}$ & $22.2 \text{ ms} \dots 1056.7 \text{ ms}$ \\
+         & 10,000 & $22.1 \text{ ms} \pm 0.3 \text{ ms}$   & $18.0 \text{ ms}$ & $1.9 \text{ ms}$ & $21.5 \text{ ms} \dots 23.2 \text{ ms}$ \\
+         & 1,000 & $22.1 \text{ ms} \pm 0.3 \text{ ms}$   & $18.0 \text{ ms}$ & $1.9 \text{ ms}$ & $21.4 \text{ ms} \dots 22.8 \text{ ms}$ \\
+        \midrule
+        \multirow{3}{*}{Python} & 100,000 & $17.4 \text{ ms} \pm 1.5 \text{ ms}$   & $13.1 \text{ ms}$ & $3.1 \text{ ms}$ & $16.6 \text{ ms} \dots 31.3 \text{ ms}$ \\
+         & 10,000 & $14.1 \text{ ms} \pm 0.3 \text{ ms}$   & $9.9 \text{ ms}$  & $3.1 \text{ ms}$ & $13.6 \text{ ms} \dots 16.3 \text{ ms}$ \\
+         & 1,000 & $13.7 \text{ ms} \pm 0.3 \text{ ms}$   & $9.6 \text{ ms}$  & $3.1 \text{ ms}$ & $13.3 \text{ ms} \dots 14.9 \text{ ms}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Benchmark Comparison of Loop Iterations}
+     \label{tab:benchmark_results}
+\end{table}
+% 

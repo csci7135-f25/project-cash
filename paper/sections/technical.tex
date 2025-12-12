@@ -1,0 +1,97 @@
+In this section we seek to formalize the definition of cumulative abstract semantics. To do this we first compare them with standard abstract interpretation strategies. The connection between the two approaches is formally characterized. We begin to explore the potential for automatic generation of interfaces and handler signatures by identifying patterns in the types of program nodes.
+% 
+\subsection{Formalization of Cumulative Abstract Semantics}\label{sec:tech-formal}
+The evaluation of a specific node follows the general path of $\eval{\cdot} \leadsto elim \leadsto intro$. An elimination or introduction interface is chosen based off of matching type signatures. This means eval is running, hits a node and asks the interpreter to find a way to fulfill the elim request. We continue to borrow Koka's notation of $\unsubst{eval} : \backslash \langle \elim{e}, \intro{i}\rangle$ to indicate this unsubstantiated interpreter needs to fill some elimination $\elim{e}$ calls and some introduction $\intro{i}$ calls. By applying a specific set of elimination and introduction handlers, we \emph{substantiate} it, in other words fill out the missing implementation. The application looks like $\elim{E} \circ \intro{I} (\unsubst{eval} \langle \elim{e}, \intro{i} \rangle) = eval$. It is possible to incrementally apply them as well: $\elim{E}(\unsubst{eval} \langle \elim{e}, \intro{i}\rangle) = \unsubst{eval} \langle \intro{i}\rangle$, but this interpreter is still not fully substantiated, and thus unexecutable.
+% 
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[
+        % Global style for nodes
+        every node/.style={align=center, font=\large},
+        % Arrow style
+        arrow/.style={->, >=stealth, thick},
+        % Label style
+        lbl/.style={font=\normalsize, fill=white, inner sep=1pt}
+    ]
+
+    % --- Nodes ---
+
+    % Top Layer
+    \node (top) at (0,0) {$\unsubst{\texttt{eval}}$: $\mathscr{d} \effect{\elim{e},  \intro{i}}$};
+
+    % Middle Layer 
+    \node (mid_left)  at (-2, -2) {$\overleftarrow{\texttt{eval}} : \mathscr{d} \effect{\intro{i}}$};
+    \node (mid_right) at (2, -2)  {$\overrightarrow{\texttt{eval}} : \mathscr{d} \effect{\intro{i}}$};
+
+    % Bottom Layer 
+    \node (bot_l2) at (-5.5, -4.1) {$\dots$};
+    \node (bot_l1) at (-4, -4) {$\overleftarrow{\texttt{eval}} : \hat{v}$};
+    \node (bot_center) at (0, -4) {$\overrightarrow{\texttt{eval}}$: $v$};
+    
+    \node (bot_r1) at (4, -4) {$\overrightarrow{\texttt{eval}} : \hat{v}$};
+    \node (bot_r2) at (5.5, -4.1) {$\dots$};
+
+    % --- Arrows ---
+
+    % Top -> Middle (Label E)
+    \draw[arrow] (top) -- node[lbl] {$\elimcolor{E}$} (mid_left);
+    \draw[arrow] (top) -- node[lbl] {$\elimcolor{E}$} (mid_right);
+    \draw[arrow] (top) -- node[lbl] {$\elimcolor{E} \circ \introcolor{I}$} (bot_center);
+
+    % Middle -> Bottom (Label I)
+    % rev_eval (mid) -> rev_eval (bot)
+    \draw[arrow] (mid_left) -- node[lbl] {$\introcolor{I}$} (bot_l1);
+    
+    % eval (mid) -> bottom two evals
+    \draw[arrow] (mid_right) -- node[lbl] {$\introcolor{I}$} (bot_r1);
+    \draw[arrow] (mid_right) -- node[lbl] {$\introcolor{I}$} (bot_center);
+
+    % --- Curved Outer Arrows (Label I . E) ---
+    
+    % Curve around the left side
+    \draw[arrow] (top.west) to[out=190, in=90, looseness=1.2] 
+        node[midway, left=0.2cm] {$\elimcolor{E} \circ \introcolor{I}$} (bot_l1);
+
+    % Curve around the right side
+    \draw[arrow] (top.east) to[out=-10, in=90, looseness=1.2] 
+        node[midway, right=0.2cm] {$\elimcolor{E} \circ \introcolor{I}$} (bot_r1.north);
+
+    \end{tikzpicture}
+    \caption{Relationship between cumulative semantics, extensible domain, and monolithic interpreters. The symbol $\mathscr{d}$ indicates an arbitrary, unspecified domain, while $v$ and $\hat{v}$ indicate the concrete or a specific abstract domain respectively.}
+    \label{fig:relation}
+\end{figure}
+% 
+The relationships among standard interpretation techniques are illustrated in Figure \ref{fig:relation}. The topmost, and most abstract, layer is an unsubstantiated interpreter: the simple fold over the syntax. This interpreter is not directly executable because it contains two classes of unresolved references: elimination ($\elim{e}$) and introduction ($\intro{i}$).  
+
+By applying a combination of elimination handlers ($\elimcolor{E}$) and introduction interfaces ($\introcolor{I}$), we obtain a substantiated interpreter for a given abstract domain. Notably, by varying the elimination handlers while fixing the introduction handler, we can derive analyses that realize different control-flow directions within the same abstract domain. Although the figure explicitly depicts only forward and backward control flow, this approach generalizes to other forms of control-flow variation (e.g. flow sensitivity).  
+
+If we apply only elimination handlers, we obtain an interpreter with a fixed control-flow strategy that remains extensible with respect to the abstract domain. This layer closely resembles typical modular abstract interpreters, such as Sturdy, which support extensibility in the abstract domain but require substantially more effort to adapt or redesign the direction of control-flow ~\cite{Keidel18}. Once these interpreters are further instantiated by introduction handlers, they become fully substantiated and executable.
+
+\subsection{Patterns for Signatures of Handlers}\label{sec:tech-pattern}
+So far we have identified three classes of analysis components: elimination, introduction, and lowering. We defined both handler and semantic interfaces as typed, promised computations, fulfilled by either a substantiated handler or witness. The distinction between handlers and interfaces is that handlers have access to the $\rec$ continuation. These can be implemented with a variety higher ordered programming paradigms, such as through an algebraic effect and handler system, or through type classes. For each syntax there is always a corresponding pair of elimination handlers and introduction interfaces. Lowering interfaces are created whenever necessary or desired; because these are not tied to the language, there is freedom to define them however one wants. The other two forms of computational signatures are more formulaic, which is intentional for the purpose of automatic code generation. The goal of this framework is that given a grammar, the elimination and introduction interfaces will be automatically generated alongside the unsubstantiated evaluation function, providing a full, well-typed template for an analysis engine. From there the developer will implement handlers and witnesses as they see fit, reusing from their library of accumulated semantics when redundancies are encountered.
+
+Elimination handler signatures have three components. They take a function for evaluation (explicitly or implicitly) that gives them the access to the power of recursion. They then take all of the same parameters as the associated program syntax does. And finally a state and the return value of the interpretation. Consider an $\syntax{\ifnzsym}$ syntax node which has three parameters and the given eval function type:
+% 
+\begin{mathparsmall}
+   \syntax{if}: Expr \to Stmt \to Stmt \to Stmt\\
+   eval : Prog \to \sigma \to \sigma \times \delta\\
+\end{mathparsmall}
+% 
+With these, the signature of the elimination handler would be the following:
+% 
+\begin{mathparsmall}
+    \elim{\ifnzsym}: (Prog \to \sigma \to \sigma\times \delta) \to Expr \to Stmt \to Stmt \to \sigma \to \sigma \times \delta
+\end{mathparsmall}
+% 
+This pattern holds true for all elimination handlers. One might be tempted to define one pattern for introduction interfaces as well. However, this design would conflict with the ethos of cumulative semantics. Exposing the entire state when, for example, defining the introduction witnesses for integer addition is conceptually inappropriate: what role would the global state play in determining the sum of two operands, and how would the addition operator decide which version of the state to propagate? Such concerns are questions better suited for control flow operators and their elimination handlers. Granting introduction handlers unrestricted access to state would erode the deliberate separation between elimination and introduction operators, thereby undermining the central purpose of elimination handlers: to determine how state is threaded through the program. A binary operator, at the introduction level, should not depend on or manipulate the global state. Instead, our framework introduces three canonical categories of program nodes, each with distinct interface patterns.
+
+\emph{Computational} nodes correspond to purely computational expressions (such as binary operators). They are purely mathematical expressions that simply need to be computed, and  their introduction handlers operate solely on values from the semantic domain and do not manipulate state. Their type is then a $\delta$ for each program node in the syntax, and return $\delta$. By not involving state we also gain the benefit of being able to reuse the introduction witness in different versions of evaluation 
+% (what if introduce another state? or want to have l-vlaues and r-values?)
+, as we saw in Section \ref{sec:overview-state}.
+
+\emph{State} nodes are where we cannot make this separation. In a forwards, non-relational analysis, a `get' operation does not modify the state; it only observes it. In a backwards analysis, however, a `get' affects the abstract state. Thus, state-oriented nodes must combine both capabilities: producing values and potentially transforming the state, so their return type is always the return type of the program. Like computations, all program nodes in their parameter list are transformed into domain values, and have the same return type.
+
+\emph{Control flow} nodes (such as `if' and `while') present a choice for the developer, namely the semantic requirements of the domain that they are implementing. 
+If they are implementing a denotational semantics, then the control flow nodes deal with denotational-semantic-style state transformations. Their elimination handlers are responsible for deconstructing the syntax into state transformers. Their introduction witnesses then thread the state through and dictate how to merge various transformations through joining, fix point iteration, widening, etc. This results in their introduction witnesses being passed a state transformation for each program node, and returning a state. 
+If they are implementing a big step semantics then every program node becomes the return type of the evaluation, with control flow decisions residing in the elimination handlers and the introduction interfaces becoming trivial.
+Other semantic styles are as of yet still unexplored.

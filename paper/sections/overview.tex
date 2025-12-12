@@ -1,0 +1,124 @@
+Expanding on the previous work of \citet{us} we demonstrate the core theory behind cumulative abstract semantics, without the previously assumed reliance on an a priori effect system.
+To provide an intuition preliminary definitions of cumulative abstract semantics, we illustrate iterations on evaluation of a simple language. We begin with an arithmetic language, to which we add conditionals and variables. Consider the following small arithmetic expression language:
+% 
+\begin{displaysmall}
+        \begin{grammar}
+            Expressions & \expr & ::= & \cst{n} & \text{integer constants} \\
+            && \mid & \add{\expr_1}{\expr_2} & \text{addition} \\
+            % && \mid & \ifnz{\expr_1}{\expr_2}{\expr_3} & \text{if expressions} \\
+            % Constants & \const & ::= & \intC & \text{integers} \\
+            % && \mid & \boolC & \text{booleans}
+        \end{grammar}
+\end{displaysmall}
+% 
+While the paradigm of cumulative semantics is flexible enough to work across semantic representations, such as big step or denotational, this example demonstrates a piecewise denotational implementation of the type $\evalemp_0 : n$. This interpreter is dubbed \emph{monolithic} because it has no options for extension without rewriting the evaluator, while mapping expressions to concrete values through induction on the syntax. 
+% 
+\begin{mathparsmall}
+    \evalnostate{\cst{n}}{0}{n}\\
+    \evalnostate{\add{\expr_1}{\expr_2}}{0}{\eval{\expr_1}_{0} \meta{+} \eval{\expr_2}_{0}}\\
+\end{mathparsmall}
+% 
+\subsection{Domain Parameterization via Introduction Interfaces}\label{sec:overview-intro}
+While the concrete interpreter is correct and complete, it lacks modularity. The evaluation logic is tightly coupled to the concrete integer domain, making it difficult to reuse any components of this interpreter for abstract analysis or alternative semantic interpretations. To address this limitation we refactor the evaluator over an arbitrary domain, $\absval$. We also introduce the concept of \emph{introduction} interfaces, which provide domain specific semantics to an evaluator. We define two introduction interfaces for our language, $\intro{\cstsym}$ and $\intro{\addsym}$, for representing integer literals and addition in some abstract domain $\absval$. The resulting \emph{ unsubstantiated} interpreter, $\unsubsteval{\cdot}_1 : \absval \;\effect{\intro{\cstsym}, \intro{\addsym}}$, operates over an abstract domain by delegating all domain-specific operations to these handlers. To indicate which handlers still need substantiation, we use the with the $\effect{}$ syntax borrowed from the Koka \cite{leijen14} programming language.
+% 
+\begin{mathparsmall}
+    \unsubstevalnostate{\cst{n}}{1}{\cstI{n}}\\
+    \unsubstevalnostate{\add{\expr_1}{\expr_2}}{1}{\addI{\unsubsteval{\expr_1}_1}{\unsubsteval{\expr_2}_1}}\\
+\end{mathparsmall}
+% 
+Introduction interfaces correspond to their syntax, so for every syntax in the language there is an introduction interface for it. By providing witnesses for both of these interfaces, we can instantiate this evaluator for any abstract domain. Here is a substantiation in the concrete domain (left) and in the interval domain (right):
+% 
+\begin{multicols}{2}
+\begin{mathparsmall}
+    \cstI{n} := n\\
+    \addI{n_1}{n_2} := n_1 \meta{+} n_2
+\end{mathparsmall}
+
+\begin{mathparsmall}
+    \cstI{n} := [n, n]\\
+    \addI{[l_1, u_1]}{[l_2, u_2]} := [(l_1 \meta{+} l_2), (u_1 \meta{+} u_2)]
+\end{mathparsmall}
+\end{multicols}
+% 
+\subsection{Abstract Domain Operators}\label{sec:overview-lowering}
+We now extend the language with conditional expressions and booleans:
+% 
+\begin{displaysmall}
+    \begin{grammar}
+        & & \expr & ::= & \dots \mid \ifnz{\expr_1}{\expr_2}{\expr_3} & \text{conditionals} \\
+        % && \const & ::= & \dots \mid \boolC & \text{Booleans}
+    \end{grammar}
+\end{displaysmall}
+% 
+The C-style conditional construct $\ifnz{\expr_1}{\expr_2}{\expr_3}$ evaluates $\expr_1$ and based on whether the result is non-zero will evaluate $\expr_2$ or $\expr_3$ respectively. To support the abstract domain implementations we introduce the notion of \emph{lowering} interfaces, which operate purely on domain elements and are defined at whim. These manifest themselves as standard abstract domain operators like $\assumeLsym$, $\assumenLsym$, and $\joinLsym$. The two assume handlers evaluate the first value (or its negation) and based on the truth value in that domain, will return the second value or $\bot$. The join operator behaves as expected. The power of lowering interfaces lies in their composability and syntax independence. They define abstract operations that can be combined to express complex domain transformations while remaining agnostic to the specific control flow patterns that invoke them. A new interpreter of the type $\unsubsteval{\cdot}_2 : \absval \effect{\intro{\cstsym}, \intro{\addsym}, \intro{\ifnzsym}}$ leveraging these interfaces is defined as follows. Note how we are able to reuse our previously defined introduction interfaces, but not the old evaluator. This evaluator is unsubstantiated, but is universal for flow-sensitive abstract interpretation, being parameterized by the domain and its introduction and lowering handlers.
+% 
+\begin{mathparsmall}
+        \unsubstevalnostate{\cst{n}}{2}{\cstI{n}}\\
+    \unsubstevalnostate{\add{\expr_1}{\expr_2}}{2}{\addI{\unsubsteval{\expr_1}_1}{\unsubsteval{\expr_2}_1}}\\
+    \unsubstevalnostate{\ifnz{\expr_1}{\expr_2}{\expr_3}}{2}
+    {\ifnzI{\unsubsteval{\expr_1}_2}{\unsubsteval{\expr_2}_2}{\unsubsteval{\expr_3}_2}}\\
+
+    \ifnzI{n_1}{n_2}{n_3} := \joinL{\assumeL{n_1}{n_2}}
+            {\assumenL{n_1}{n_3}}
+            
+\end{mathparsmall}
+% 
+\subsection{Control Flow Separation via Elimination Handlers}\label{sec:overview-elim}
+However, our evaluator $\unsubsteval{\cdot}_2$ still bakes in a fixed control flow pattern for all constructs. We must expose the evaluation structure itself through \emph{elimination} handlers, which eliminate the source syntax and access the interpretation ecosystem that is introduction and lowering interfaces. This gives the elimination handlers the opportunity to directly call introduction handlers, or modify the syntax and pass the new expression to a different elimination handler (through the evaluation function). These handlers must have access to the evaluation function, $\rec$. We define elimination handlers in an abstract interpretation style for our three expression types as follows:
+% 
+\begin{mathparsmall}
+    \cstE{n} := \cstI{n}\\
+    \addE{e_1}{e_2} := \addI{\rec(e_1)}{\rec(e_2)}\\
+    \ifnzE{e_1}{e_2}{e_3} := \ifnzI{\rec(e_1)}{\rec(e_1)}{\rec(e_1)}\\
+\end{mathparsmall}
+% 
+With these handlers we define a new evaluator of the type: $\unsubsteval{\cdot}_3 : \absval \backslash \langle \intro{i}, \elim{e} \rangle$. For brevity's sake we transition to using $\intro{i}$ and $\elim{e}$ to indicate that the introduction handlers or elimination handlers respectively are unsubstantiated. 
+% 
+\begin{mathparsmall}
+    \unsubstevalnostate{\cst{n}}{3}{\cstE{n}}\\
+    \unsubstevalnostate{\add{\expr_1}{\expr_2}}{3}{\addE{\expr_1}{\expr_2}}\\
+    \unsubstevalnostate{\ifnz{\expr_1}{\expr_2}{\expr_3}}{3}
+    {\ifnzE{\expr_1}{\expr_2}{\expr_3}}\\
+\end{mathparsmall}
+% 
+This interpreter delegates all control flow to the elimination handlers, making it universal to all analyses. In the concrete domain we could provide an elimination handler like the following that implements short circuiting logic, disregarding the introduction handler in the process:
+% 
+\begin{mathparsmall}
+    \ifnzE{\expr_1}{\expr_2}{\expr_3} := \meta{ if (\;} \rec(\expr_1) \meta{$\neq 0$) then\;} \rec(\expr_2) \meta{\;else\;} \rec(\expr_3)
+\end{mathparsmall}
+% 
+
+\subsection{State Threading}\label{sec:overview-state}
+Until now our expression language has been pure, with no concept of state. With the following we add global state to our language:
+% 
+\begin{displaysmall}
+    \begin{grammar}
+        & & \expr & ::= & \dots \mid \var{x} & \text{variable recall} \\
+        & & & \mid & \asgn{x}{e_1} & \text{assignment}\\
+        % & & & \mid & \seq
+    \end{grammar}
+\end{displaysmall}
+% 
+With these new expressions, we must implement corresponding elimination handlers and introduction interfaces: $\elim{\varsym}$, $\elim{\asgnsym}$, $\intro{\varsym}$, and $\intro{\asgnsym}$. These operations introduce the need for a notion of state, which we intentionally will keep generic and refer to as $\absstore$. We need to modify the return type of our new evaluator, giving us a new unsubstantiated evaluation function of the type: $\unsubsteval{\cdot}_4 : \absstore \to \absstore \times \absval \backslash \langle \intro{i}, \elim{e} \rangle$. For simplicity we model this interpretation as a tuple of state and values, however, different approaches such as monadic state are equally valid.
+% 
+\begin{mathparsmall}
+    \unsubstevalnostate{\cst{n}}{3}{\cstE{n}}\\
+    \unsubstevalnostate{\add{\expr_1}{\expr_2}}{3}{\addE{\expr_1}{\expr_2}}\\
+    \unsubstevalnostate{\ifnz{\expr_1}{\expr_2}{\expr_3}}{3}
+    {\ifnzE{\expr_1}{\expr_2}{\expr_3}}\\
+    \unsubstevalnostate{\var{x}}{3}{\varE{x}}\\
+    \unsubstevalnostate{\asgn{x}{\expr_1}}{3}{\asgnE{x}{\expr_1}}\\
+\end{mathparsmall}
+% 
+This evaluation function (like $\unsubsteval{\cdot}_2$) is simply a fold over the syntax of the language. With this, we can choose how to thread state as demonstrated by the following elimination handlers for concrete interpretation:
+% 
+\begin{mathparsmall}
+    \cstE{n} := \lambda\absstore. \tuple{\absstore}{\cstI{n}}\\
+    \addE{e_1}{e_2} := \lambda\absstore. \tuple{\absstore''}{\addI{\rec(e_1)\absstore}{\rec(e_2)\absstore'}}\\
+    \ifnzE{e_1}{e_2}{e_3} := \ifnzI{\rec(e_1)}{\rec(e_1)}{\rec(e_1)}\\
+    \varE{x} := \lambda\absstore. \absstore\introcolor{\vdash}\varI{x}\\
+    \asgnE{x}{\expr_1} := \lambda\absstore.\absstore'\introcolor{\vdash}\asgnI{x}{\rec(\expr_1)\sigma}
+\end{mathparsmall}
+% 
+The evaluator for expressions and statements now operates in the context of these state-threading effects, allowing environment operations to be handled modularly. By keeping the state generic we allow for both relational and non relational domains. With the state threading we also gain the same accumulation of handlers that we did before state. We (naturally) had to reconstruct the elimination handlers with the addition of state, but got to keep all of our introduction handlers.
+Via this iterative decoupling of syntax and domain representation we arrive at a generic evaluation function that servers as a fully parametric abstract evaluation engine. One that can be substantiated for any abstract domain regardless of the directionality of control flow.

@@ -1,0 +1,15 @@
+% problem statement
+Cumulative abstract semantics provides a promising solution to the expression problem, but is still an underdeveloped theory.
+% why is it interesting
+The reusability that this framework provides has the potential to lower the time and cost of creating abstract interpreters, as well as facilitating reuse of research.
+% why is it hard
+Syntax and semantics are inherently intertwined and difficult to define in isolation. Thereby an analyzer is forced to fuse the syntax, control flow directionality, and abstract domain.
+% what is our contribution
+We build on cumulative abstract semantics as a theory.
+Our previous work constrained cumulative semantics to effect systems, we lift our theory to any higher ordered language. 
+Demonstrating the decomposition of syntax and introduction of semantics do not require an a priori effect system, but can be expressed with type classes and continuations.
+% what did we do
+We also provide a formalization of this framework, as well as two implementations in different languages for concrete interpretation to demonstrate it's scalability and use.
+% what did we conclude
+We found that there was not a performance impact between the two languages, and neither us too much of a performance cost. 
+We proved that this is indeed a valid framework, but it still requires more work to be done.

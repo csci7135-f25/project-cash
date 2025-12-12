@@ -1,0 +1,74 @@
+\subsubsection{Handlers and Interfaces}
+As explored in our introductory work on Cumulative Semantics, the theory is cleanly expressed with algebraic effects and handlers ~\cite{Plotkin_2013}. The key insight being that effect handlers offer an implicit resume, eliminating the need for passing a continuation with every recursive call. Any language with an effect system supporting generic effect interfaces and multiple resumptions can express the ethos of cumulative semantics.
+
+Previously we implemented our analyzer with Koka, but found that due to the need for several handlers with multiple resumptions performance dropped significantly. The Koka compiler is not optimized for such a task. Instead, we decided to implement with Effekt ~\cite{Schuster2022} due to its efficient compilation of effect handlers to CPS style code.
+
+Due to the high level of abstraction provided by algebraic effects, implementing an analyzer that adheres to cumulative semantics with a direct style is extremely natural.
+
+The subset of Python's Syntax is represented as an ADT named $Prog$, of two smaller ADT's. One for expressions, and one for statements. Elimination handlers are defined as an effect interface, parametrized by a generic domain $D$. They take in state, a piece of syntax, and or an $Ident$, represented by a $String$. They return a tuple of $Prog$ and state, signaling that their handlers reduce or eliminate syntax while updating state. Due to the branching nature of syntax ($if$, $seq$, etc..) elimination handlers utilize multiple resumptions to pass each syntactic branch back into the evaluation function. As a result the elimination effects are grouped into a single interface, ensuring that when a new, processed syntax is resumed, the handler of this syntax is known immediately.
+
+\begin{lstlisting}[language=scala]
+interface Elimination[D] {
+  def varE(st: State[D], x: String): (Prog, State[D])
+  ...
+  def seqE(st: State[D], e1: Stmt, e2: Stmt): (Prog, State[D])
+}
+\end{lstlisting}
+
+Additionally introduction interfaces are expressed with effects. Algebraic effects are powerful enough to emulate type classes. They are parameterized by the same generic domain type $D$, and will only resume once, allowing them to be defined individually. Introduction interfaces are tasked with introducing new values and states of a syntactic domain, as demonstrated by their type signatures.
+
+\begin{lstlisting}[language=scala]
+effect plusI[D](st: State[D], d1: D, d2: D): (D, State[D]) 
+effect asgnI[D](st: State[D], x: String, v: D): (D, State[D])
+\end{lstlisting}
+
+\subsubsection{Unsubstantiated Evaluation} Once the elimination and introduction effects have been typed it is possible to create an unsubstantiated evaluation function. The type signature denotes the presence of the $Elimination$ effect interface, as well as any introduction handlers for constant domain values. These can either be expressed as elimination handlers or directly as introduction handles as shown below. The $eval$ function takes in a program and initial state, returning a generic domain value and state parameterized by that generic domain. The $do$ notation calls an effect, the resumption of which will return a processed piece of syntax back into the recursive $eval$ function call.
+
+\begin{lstlisting}[language=scala]
+def eval[D](prog: (Prog, State[D])): (D, State[D]) /{
+    intI[D], boolI[D], unitI[D], varI[D],
+    Elimination[D] } = 
+  val (e, st) = prog
+  e match {
+    case E(e) => e match
+      case Plus(e1, e2) => eval(do plusE(st, e1, e2))
+      ...
+\end{lstlisting}
+
+\subsubsection{Concrete Evaluation} There are two steps to achieving an executable evaluation. First we must substantiate the elimination Effects for concrete values. Then intro effects can be substantiated to produce values in the domain of the current evaluation. The syntax below expresses a function that wraps an effectful one, providing handlers to a specified effect. This wrapper can introduce new effects, even if they are called by another effect's handlers. Each elimination handler calls its corresponding introduction interface, which we account for in the type of the function.
+
+\begin{lstlisting}[language=scala]
+def match_to_fold
+  {prog: => (Val, State[Val]) / {Elimination[Val]}}:
+  (Val, State[Val]) / {
+    ...
+    ifI[Val], whileI[Val], seqI[Val] } =
+    { try {prog()}
+      with Elimination[Val] {
+        def plusE(st, e1, e2) =
+          val (v1, st1) = resume((E(e1), st))
+          val (v2, st2) = resume((E(e2), st1))
+          do plusI(st2, v1, v2)
+        ...
+\end{lstlisting}
+
+While the return type of the handler must match the type passed to its $resume$, it can be thought of as a returning a continuation to the recursive call of $eval$. Once evaluation has reached a leaf of the AST,the elimination handler delegates returning domain values to its introduction interface, passing in any updated values and states.
+
+Evaluation becomes executable once all elimination and introduction effects are handled. Now with the elimination effects handled, a wrapper to give semantics to introduction interfaces fully substantiates $eval$ is instantiated.
+
+\begin{lstlisting}[language=scala]
+def run(prog: Prog, init: State[Val]): (Val, State[Val]) = {
+  try {
+    with match_to_fold()
+    eval((prog, init))}
+  ...
+  with ifI[Val] {(stT, stF, g, t, f) =>
+    g match {
+      case B(true) => resume((t, stT))
+      case B(false) => resume((f, stF))
+      case _ => resume((U(), stF))
+\end{lstlisting}
+
+Introduction handlers choose the values and states a syntactic node should return. This behavior pins the domain of evaluation and directionality of control flow. As seen in the witness (effect handler) for $if$, the witness receives two states for each branch of the if, the value of evaluating the guard condition, the true branch, and the false branch. It then dictates which branch's state should be returned based on the guard value. Herein lies the value for relational analysis. The introduction handler can decide to combine the states of diverging branches instead of choosing only one.
+
+The Effekt implementation of cumulative semantics is very explicit and due to the direct style facilitated by algebraic effects, the theory is not lost within the implementation. Both elimination handlers and introduction witnesses are expressed with the same construct creating a congruence that allows the developer to focus more on the theory of cumulative semantics over the implementation itself.

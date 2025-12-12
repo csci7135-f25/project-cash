@@ -1,0 +1,22 @@
+% Whats the problem
+Abstract interpretation frameworks face a fundamental tension between simplicity and modularity. While existing approaches enable the construction of static analyzers across new, but similar, abstract domains, there is no methodology for changing the directionality of analysis within the same engine. Existing solutions require significant code duplication between engines. The nascent \emph{cumulative abstract semantics} propose an elegant solution to this problem, yet this approach remains largely unexplored beyond initial demonstrations \cite{us}. A formalization establishing the relationship between cumulative semantics and traditional abstract interpretation is still missing, as well as separating the theory behind this approach and the language in which it is implemented. Furthermore, there exists no evidence supporting more realistic domain features such as state and iteration. Without these foundations, cumulative semantics remain a promising but unproven technique for building modular abstract interpreters.
+
+% why is it interesting (why does industry care)
+Cumulative semantics reshape how abstract interpreters are constructed at a fundamental level. Traditional approaches require implementing a complete interpreter for each new analysis, duplicating substantial amounts for evaluation logic when either the semantic domain or flow of the engine changes. In contrast, cumulative abstract semantics decomposes evaluation logic into smaller, more generic, and reusable fragments. The separation of the control flow and the syntax from the abstract domain specific operations allows for a high degree of reuse across distinct instantiations of interpreters. 
+Two analysis with the same flows can reuse the same control flow fragments, only using unique components for differing domain semantics.
+Similarly, the same domain operations can support both forward and backward analysis by composing with different control flow handlers. With the potential for automatic code generation, this framework also permits the extension of the syntax, allowing developers to easily update languages with new features or add new languages completely without affecting any of the old analyses. The reusability of this framework has the potential to substantially lower the cost of developing and maintaining new static analyses.
+
+%why is it hard (why does science care)
+Achieving orthogonality between syntax and semantics in abstract interpretation is fundamentally difficult because interpreters must couple these concerns to produce any meaningful output. 
+Typically the choice of control flow must be implemented based on the domain specific semantic representation of the target syntax, forcing this decision to percolate through the entirety of the analysis.
+% Control flow decisions during syntax traversal depend on semantic domain properties, while domain operations must account for their syntactic context.
+This mutual dependence is an instance of the expression problem\cite{wadler1998}: extending syntax requires modifying the evaluation fold, while adding semantic domains often necessitates revisiting traversal logic. State amplifies this challenge as impure statements modify the environment, which must threaded carefully through the entire interpretation while agnostic to a given domain. The difficulty is not merely compositional, but also ensuring that arbitrary combinations of syntax, control flow strategies, and abstract domains will work cohesively and independently of each other. Existing approaches address these challenges through complex abstractions that either obscure the evaluation structure or restrict expressiveness, demonstrating that modularity in abstract interpretation requires solving deep technical problems rather than applying standard design patterns.
+
+\subsection{Contribution}\label{sec:intro-contrib}
+In our paper we present the following contributions:
+
+\begin{itemize}
+    \item We expand on the idea of cumulative abstract semantics as a new manner to craft stateful interpreters in Section \ref{sec:overview}.
+    \item We give a relationship between cumulative abstract semantics and traditional interpreters, offering a recipe for how to use them in Section \ref{sec:tech}.
+    \item We demonstrate two different implementations: one in Lean and another in Effekt, and compare the two approaches in Section \ref{sec:eval}.
+\end{itemize}

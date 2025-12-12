@@ -1,0 +1,198 @@
+\documentclass[acmsmall,screen,review,timestamp]{acmart}
+\settopmatter{printacmref=false} % Removes the ACM reference format
+\renewcommand\footnotetextcopyrightpermission[1]{} % Removes the footnote with permission details
+% \citestyle{acmauthoryear}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{stmaryrd}
+\usepackage{tikz}
+\usepackage{mathpartir}
+\usepackage{listings}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{multirow}
+
+
+% Chat generated lsting settings for lean
+\definecolor{leankeyword}{rgb}{0.7, 0.1, 0.1}   % Red/Purple for keywords
+\definecolor{leancomment}{rgb}{0.4, 0.4, 0.4}   % Grey for comments
+\definecolor{leanstring}{rgb}{0.2, 0.5, 0.2}    % Green for strings
+\definecolor{leantactic}{rgb}{0.1, 0.1, 0.6}    % Blue for tactics
+
+\lstdefinelanguage{lean}{
+  % 1. Keywords (Basic Definitions & Commands)
+  morekeywords={def, theorem, lemma, example, where, structure, inductive, class, instance, abbreviation, opaque, axiom, variable, section, namespace, end, open, import, export, universe, polymorphism, deriving},
+  % 2. Keywords (Control Flow & Logic)
+  morekeywords={if, then, else, let, in, match, with, do, fun, by, calc, have, obtain, show, from, suffices, assume},
+  % 3. Keywords (Types & Sorts)
+  morekeywords={Type, Prop, Sort, Bool, Nat, Int, List, Option, String, Char, Unit, Empty},
+  % 4. Constants
+  morekeywords={true, false, none, some, nil, cons},
+  %
+  % Comments and Strings
+  morecomment=[l]{--},
+  morecomment=[n]{/-}{-/},
+  morestring=[b]",
+  %
+  % Style settings
+  sensitive=true,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{leankeyword}\bfseries,
+  commentstyle=\color{leancomment}\itshape,
+  stringstyle=\color{leanstring},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  breaklines=true,
+  tabsize=2,
+  captionpos=b,
+  %
+  % LITERATE: Map Unicode to LaTeX math symbols
+  % Add more symbols here as you need them
+  literate=
+    % {:=}{{$\coloneqq$}}1
+    {=}{{$=$}}1
+    {->}{{$\to$}}1
+    {→}{{$\to$}}1
+    {<-}{{$\leftarrow$}}1
+    {←}{{$\leftarrow$}}1
+    % {=>}{{$\Rightarrow$}}1
+    {⇒}{{$\Rightarrow$}}1
+    {∀}{{$\forall$}}1
+    {∃}{{$\exists$}}1
+    {λ}{{$\lambda$}}1
+    {α}{{$\alpha$}}1
+    {β}{{$\beta$}}1
+    {γ}{{$\gamma$}}1
+    {δ}{{$\delta$}}1
+    {σ}{{$\sigma$}}1
+    {ρ}{{$\rho$}}1
+    {ℕ}{{$\mathbb{N}$}}1
+    {ℤ}{{$\mathbb{Z}$}}1
+    {ℚ}{{$\mathbb{Q}$}}1
+    {ℝ}{{$\mathbb{R}$}}1
+    {×}{{$\times$}}1
+    {∘}{{$\circ$}}1
+    {∧}{{$\land$}}1
+    {∨}{{$\lor$}}1
+    {¬}{{$\neg$}}1
+    {≠}{{$\neq$}}1
+    {≤}{{$\le$}}1
+    {≥}{{$\ge$}}1
+    {↔}{{$\leftrightarrow$}}1
+    {∈}{{$\in$}}1
+    {∉}{{$\notin$}}1
+    {⊂}{{$\subset$}}1
+    {⊆}{{$\subseteq$}}1
+    {⊑}{{$\sqsubseteq$}}1
+    {∩}{{$\cap$}}1
+    {∪}{{$\cup$}}1
+    {⊔}{{$\sqcup$}}1
+    {⊥}{{$\bot$}}1
+    {⊢}{{$\vdash$}}1
+    {⟨}{{$\langle$}}1
+    {⟩}{{$\rangle$}}1
+    {sorry}{{{\bfseries\color{red}sorry}}}5
+}
+
+% Chat generated lstlisting settings for Scala
+\definecolor{scalakeyword}{rgb}{0.7, 0.1, 0.1}   % Red/Purple for keywords
+\definecolor{scalacomment}{rgb}{0.4, 0.4, 0.4}   % Grey for comments
+\definecolor{scalastring}{rgb}{0.2, 0.5, 0.2}    % Green for strings
+\definecolor{scalatype}{rgb}{0.1, 0.1, 0.6}      % Blue for types
+
+\lstdefinelanguage{scala}{
+  % 1. Core Keywords
+  morekeywords={
+    def, val, var, type, class, trait, object, extends, with, new,
+    package, import, given, using, opaque, enum, case, match, yield,
+    for, if, then, else, while, do, return, throw, try, catch, finally
+  },
+  % 2. Built-in Types
+  morekeywords={[2]
+    Int, Long, Double, Float, Boolean, Char, String, Unit, Any, AnyRef,
+    List, Option, Either, Map, Vector, Seq, Array, Tuple, Nothing
+  },
+  % 3. Literals / Constants
+  morekeywords={[3]
+    true, false, null, None, Some, Left, Right
+  },
+  % Comments
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  % Strings
+  morestring=[b]",
+  morestring=[b]',
+  sensitive=true,
+  % Style settings
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{scalakeyword}\bfseries,
+  keywordstyle={[2]\color{scalatype}},      % Type color
+  keywordstyle={[3]\color{scalakeyword}},   % Constants same as keywords
+  commentstyle=\color{scalacomment}\itshape,
+  stringstyle=\color{scalastring},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  breaklines=true,
+  tabsize=2,
+  captionpos=b,
+}
+
+\title {Cumulative Abstract Semantics}
+
+\author {Andrew Fox}
+\email {Andrew.Fox@colorado.edu}
+\affiliation{
+    \institution{University of Colorado Boulder}
+    \city{Boulder}
+    \state{Colorado}    
+    \country{USA}
+}
+
+\author{Cade Lueker}
+\affiliation{
+  \institution{University of Colorado Boulder}
+  \city{Boulder}
+  \state{Colorado}
+  \country{USA}
+}
+\email{cade.lueker@colorado.edu}
+
+\date{2025}
+
+\begin{document}
+\include{macros}
+\begin{abstract}
+\input{sections/abstract.tex}
+\end{abstract}
+
+% \keywords{Goal directed analysis, algebraic effect handlers, lean}
+
+\maketitle
+
+\section {Introduction}\label{sec:intro}
+\input{sections/intro.tex}
+
+\section {Overview}\label{sec:overview}
+\input{sections/overview.tex}
+
+\section{Technical}\label{sec:tech}
+\input{sections/technical.tex}
+
+\section{Evaluation}\label{sec:eval}
+\input{sections/evaluation}
+
+\section{Conclusion}\label{sec:conclusion}
+\input{sections/conclusion.tex}
+
+\section{Related Works}\label{sec:related}
+\input{sections/related-works.tex}
+
+\newpage
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{ref}
+
+\end{document}

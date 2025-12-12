@@ -1,0 +1,162 @@
+The cumulative semantics can be defined with type classes  relying on the language's type resolution capabilities to select appropriate instances at compile time. To clarify nomenclature, an interface in this version will be a type class, while a witness will be an instance of that class. We select Lean4 to make this interpreter for several reasons: It is a clean, modern functional programming language that is growing in popularity, and compiles to performant C binaries. Additionally Lean provides the ability to reason about programs. The capability to carry proofs with our semantics opens the door to reusable soundness proofs, among others. Another practical advantage is with Lean one can get develop-time error checking if there is not an appropriate type class instance, eliminating any runtime errors where these handler may have been missing only to be discovered during testing.
+
+\subsubsection{Type Class Architecture}
+The unsubstantiated evaluator establishes the foundation for all subsequent instantiations. Its signature contains the set of elimination handlers that must be provided to produce an executable interpreter:
+\begin{center}
+    \begin{lstlisting}[language=lean]
+partial def eval {σ δ : Type}
+  [CstE σ δ] [VarE σ δ] [BinopE σ δ] [NegE σ δ]
+  [SkipE σ δ] [AssignE σ δ] [IfE σ δ] [SeqE σ δ] [WhileE σ δ]
+  : Prog → σ → (δ × σ)
+\end{lstlisting}
+\end{center}
+% 
+This evaluator remains parametric over both the state type $\sigma$ and the abstract domain $\delta$. The interpreter implements a state-passing denotational semantics, reflected in its return type of $\sigma \to \delta \times \sigma$. This function itself performs a straightforward structural recursion over the syntax, delegating to the listed typeclasses. The expression case shows this clearly:
+% 
+\begin{lstlisting}[language=lean]
+| (.Exp e) => match e with
+  | .Cst v => CstE.cst eval v
+  | .Binop e1 e2 op => BinopE.binop eval e1 e2 op
+  | .Neg e => NegE.neg eval e
+\end{lstlisting}
+% 
+Each syntatic construct invokes its corresponding elimination handler, passing the evaluator as the first argument to enable recursion. By passing itself, it maintains the same scope that it was called in, rather than defaulting to the global scope. This pattern extends to all language constructs.
+
+\subsubsection{Handler Signature Patterns}
+The type signature for handler pairs follow systematic patterns as established in Section \ref{sec:tech-pattern}. We examine representative examples from each of the three categories to illustrate how these patterns manifest via typeclasses.
+
+Computational nodes, like binary operations, operate purely on domain values without modifying state. In Lean the signature looks like the following:
+% 
+\begin{lstlisting}[language=lean]
+class BinopE (σ δ : Type) where
+  binop : (Prog → σ → (δ × σ)) → Expr → Expr → Op → σ → (δ × σ)
+class BinopI (δ : Type) where
+  binop : δ → δ → Op → δ
+\end{lstlisting}
+% 
+The elimination handler(BinopE) accepts a continuation for evaluation, the raw syntactic parameters, and the current state. It promises to return an updated state-value pair. The introduction interface operates only on domain values. Each expression in its parameter list becomes a domain value $\delta$, while the operator remains unchanged.
+
+Syntax nodes that interact with state are demonstrated by the \emph{assign} statement:
+% 
+\begin{lstlisting}[language=lean]
+class AssignE (σ δ : Type) where
+  assign : (Prog → σ → (δ × σ)) → Ident → Expr → σ → (δ × σ)
+class AssignI (σ δ : Type) where
+  assign : Ident → δ → σ → (δ × σ)
+\end{lstlisting}
+% 
+Unlike computational nodes, the introduction interface for assignment must accept a state, and returns a state-value tuple. Similar to computation nodes, state nodes transform expressions into domain values.
+
+Control flow nodes transform statements into first class state transformations. This is why we refer to this implementation as somewhat denotational: because the evaluation is broken into state transformations that are then threaded together. Their introduction handlers accept the initial state, thread it through evaluation, returning only a state. The \emph{sequence} handler illustrates this approach:
+% 
+\begin{lstlisting}[language=lean]
+class SeqE (σ δ : Type) where
+  seq : (Prog → σ → (δ × σ)) → Stmt → Stmt → σ → (δ × σ)
+class SeqI (σ δ : Type) where
+  seq: σ → (σ → σ) → (σ → σ) → σ
+\end{lstlisting}
+% 
+The introduction interface receives the initial state along with two state transformers, representing the semantic functions for each statement. This design allows the introduction witness to determine how state flows through sequential compositions: whether strictly left-to-right, with potential short-circuiting, or through some other control flow strategy—without being coupled to the specific syntax of the statements involved.
+
+\subsubsection{Concrete Evaluation}
+Substantiating the interpreter entails providing an instance for each required typeclass. We again examine binary operations, through the implementation of their witnesses: 
+\begin{lstlisting}[language=lean]
+instance {σ δ : Type} [BinopI δ] : BinopE σ δ where
+  binop eval e1 e2 op ρ :=
+    let (v1, ρ') := eval (.Exp e1) ρ
+    let (v2, ρ'') := eval (.Exp e2) ρ'
+    (BinopI.binop v1 v2 op, ρ'')
+    
+instance : BinopI ConcreteValue where
+  binop v1 v2 op := match (v1, v2, op) with
+    | (.Num n1, .Num n2, Op.Plus) => .Num (n1 + n2)
+    | (.Num n1, .Num n2, Op.Minus) => .Num (n1 - n2)
+    ...
+\end{lstlisting}
+% 
+The elimination instance remains generic over some state $\sigma$ and domain $\delta$, while the introduction instance is tied to the $ConcreteValue$ domain. This genericity allows the same $BinopE$ handler to be used across many domains simply by providing a new $BinopI$ instance. In a similar fashion, we implement the Assign handlers:
+\begin{lstlisting}[language=lean]
+instance {σ δ : Type} [AssignI σ δ] : AssignE σ δ where
+  assign eval x e ρ :=
+    let (v, ρ') := eval (.Exp e) ρ
+    AssignI.assign x v ρ'
+    
+instance {σ δ : Type} [Inhabited δ] [Put σ δ] : AssignI σ δ where
+  assign x v ρ := (default, Put.put x v ρ)
+\end{lstlisting}
+% 
+The elimination handler, as typical, decides the threading of state by evaluating the right hand side, then passing that state to the introduction handler. The introduction handler then modifies this state with the Put type class, which encapsulates the actual state update operation. This type class can be thought of as a lowering handler, preventing the need for reimplementation of assignment logic. This additional abstraction permits flexible state representations like simple maps, more sophisticated scoped states, or even relational states. The $Inhabited$ type class, which allows the elimination handler to return a default value (unit) without knowing the domain, can also be thought of as a lowering handler. Something of note here is these specific instances are generic over any domain, and so could be reused for abstract interpretation.
+
+Control flow handlers demonstrate how state transformations are assembled from syntax and packaged. This is clear in the conditional handler pair:
+% 
+\begin{lstlisting}[language=lean]
+instance {σ δ : Type} [Inhabited δ] [IfI σ δ] [Assume σ δ] : IfE σ δ where
+  if_ eval e t f ρ :=
+    let (v, ρ') := eval (.Exp e) ρ
+    let tk : σ → σ := λ σ => Assume.assume v (eval (.Stm t) σ).snd
+    let fk : σ → σ := λ σ => Assume.assumef v (eval (.Stm f) σ).snd
+    (default, IfI.if_  ρ' tk fk)
+    
+instance {σ δ : Type}  [Join σ] : IfI σ δ where
+  if_ ρ tk fk :=
+    (tk ρ) ⊔ (fk ρ)
+\end{lstlisting}
+% 
+The elimination handler constructs two state transforms: one that assumes the guard condition and evaluates the true branch, and another that assumes the negation and evaluates the false branch. It also evaluates the guard condition. With the new state and the two state transforms, it calls the introduction handler which determines how to join the two. This implementation shows a join of the two branches, giving us flow sensitive analysis. If we wanted to do a flow insensitive analysis it would be as simple as supplying a different elimination handler that has no assume calls in it.
+
+The while loop presents the most complex control flow scenario, requiring fixpoint iteration:
+% 
+\begin{lstlisting}[language=lean]
+partial def lfp {α : Type} (f : α → α) (x : α) [Bottom α] [LatOrder α] : α :=
+  let rec aux (current : α) :=
+    let next := f current
+    if next ⊑ current then current else aux next
+  aux x
+
+instance {σ δ : Type} [Assume σ δ] [WhileI σ δ] [Inhabited δ] : WhileE σ δ where
+  while_ eval e body ρ:=
+    let k : σ → σ := fun σ =>
+      let (v, σ') := eval (.Exp e) σ
+      Assume.assume v (eval (.Stm body) σ').snd
+    let invariant := WhileI.while_ ρ k
+    let final := eval (.Exp e) invariant
+    (default, Assume.assumef final.1 final.2)
+
+instance{σ δ: Type} [Bottom σ] [LatOrder σ]: WhileI σ δ where
+  while_ ρ cont := lfp cont ρ
+\end{lstlisting}
+% 
+The elimination handler constructs a state transform for one iteration of the loop: evaluate the guard, then execute the body and return the result with an assume. The introduction handler applies fixpoint iteration to this transform, starting from the inital state and continuing until convergence. The least fixpoint implementation requires that the state forms a lattice with bottom and ordering operations, which are both constraints captured in the type classes $Bottom$ and $LatOrder$. This design successfully separates the syntactic structure of loops from the semantic strategy for computing their effect, allowing the same elimination handler to support different fixpoint strategies or widening operators through alternative introduction instances.
+
+% \subsubsection{Modifying the language}
+% To evaluate the extensibility of this framework, we extended the language with python's walrus operator, or named expressions. This required modification in four locations: the grammar of the language, defining elimination and introduction type classes, the generic evaluator, and implementing the two handler instances. It is hypothesized that the first three of these could be done automatically. The complete extension totals approximately 18 lines of code:
+% \begin{lstlisting}[language=lean]
+% -- Grammar.lean (2 lines)
+% | NamedExpr: Ident → Expr → Expr
+
+% -- Classes.lean (6 lines)
+% class NamedExprE (σ δ : Type) where
+%   namedExpr : (Prog → σ → (δ × σ)) → Ident → Expr→ σ → (δ × σ)
+% class NamedExprI (σ δ : Type) where
+%   namedExpr : Ident → δ → σ → (δ × σ)
+
+% -- Eval.lean (2 line)
+% [NamedExpreE σ δ]
+% ...
+% | .NamedExpr x e => NamedExprE.namedExpr eval x e
+
+% -- Concrete.lean (7 lines)
+% instance {σ δ : Type} [NamedExprI σ δ] : NamedExprE σ δ where
+%   namedExpr eval x e σ :=
+%     let (v, σ') := eval (.Exp e) σ
+%     NamedExprI.namedExpr x v σ'
+% instance {σ δ : Type} [Put σ δ] : NamedExprI σ δ where
+%   namedExpr x v σ := (v, Put.put x v σ)
+% \end{lstlisting}
+% % 
+% Critically, no existing code was lost, and no semantics were duplicated. This contrasts to the monolithic evaluator where all semantic code was duplicated in the new version of the evaluator.
+
+% The type class approach provides several advantages as an implementation of cumulative semantics. First, the compiler enforces completeness at compile time, so lacking instantiations are not discovered at runtime. Second, the explicit type class constraints serve as machine-checked documentation of an interpreter's requirements, making dependencies between components transparent and verifiable. These properties position the type class approach as particularly suitable for building and maintaining large collections of program analyses where correctness and maintainability are paramount concerns. Third, type classes in lean also can contain proofs, which opens the door to carry soundness proofs with each semantic chunk if the developer desired.
+% 
+% \subsubsection{Abstract Interpretation}
+% Currently, we have not finished the implementation for an abstract interpreter but we are confident that it would be possible.

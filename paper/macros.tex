@@ -1,0 +1,98 @@
+% envs
+\newenvironment{mathparsmall}
+  {\begin{displaysmall}\begin{mathpar}}
+  {\end{mathpar}\end{displaysmall}}
+\newenvironment{displaysmall}
+  {\begin{center}\begin{minipage}{0.96\linewidth}\centering\small}
+  {\end{minipage}\end{center}}
+\newenvironment{grammar}
+  {\begin{mathpar}\begin{array}{rr@{}c@{}lrl}}
+  {\end{array}\end{mathpar}}
+
+% colors and fonts
+\newcommand{\syntaxcolor}[1]{{\color{Mahogany}#1}}
+\newcommand{\introcolor}[1]{{\color{Fuchsia}#1}}
+\newcommand{\elimcolor}[1]{{\color{Emerald}#1}}
+\newcommand{\loweringcolor}[1]{{\color{Periwinkle}#1}}
+
+\newcommand{\syntax}[1]{{\syntaxcolor{\texttt{#1}}}}
+\newcommand{\intro}[1]{{\introcolor{\grave{#1}}}}
+\newcommand{\elim}[1]{{\elimcolor{\acute{#1}}}}
+\newcommand{\meta}[1]{{\color{OliveGreen}\texttt{#1}}}
+\newcommand{\lowering}[1]{{\loweringcolor{\grave{#1}}}}
+
+\newcommand{\unsubst}[1]{\Breve{#1}}
+
+% evaluation 
+% operational
+\newcommand{\judge}[1]{\boxed{#1}}
+\newcommand{\evalopsym}{\Downarrow}
+\newcommand{\evalopnostate}[3]{#1 \evalopsym_{#2} #3}
+\newcommand{\evalop}[4]{#1 \vdash #2 \evalopsym_{#3} #4}
+% denotational
+\newcommand{\eval}[1]{\left\llbracket #1 \right\rrbracket}
+\newcommand{\evalemp}{\eval{\cdot}}
+\newcommand{\unsubsteval}[1]{\unsubst{\eval{#1}}}
+\newcommand{\evalnostate}[3]{\eval{#1}_{#2} = #3}
+\newcommand{\unsubstevalnostate}[3]{\unsubsteval{#1}_#2 = #3}
+\newcommand{\unsubstevalstate}[4]{\unsubsteval{#1}_#2 = \lambda #3.#4}
+\newcommand{\evalabs}[1]{\eval{#1}^\sharp}
+\newcommand{\collecting}[1]{\left\{ \mkern-4.5mu \left\llbracket #1 \right\rrbracket \mkern-4.5mu \right\}}
+
+% language macros
+\newcommand{\expr}{e}
+\newcommand{\stmt}{s}
+\newcommand{\prog}{p}
+\newcommand{\const}{v}
+\newcommand{\intC}{n}
+\newcommand{\boolC}{b}
+% symbols
+\newcommand{\cstsym}{cst}
+\newcommand{\addsym}{+}
+\newcommand{\ifnzsym}{if}
+\newcommand{\varsym}{var}
+\newcommand{\asgnsym}{:=}
+% syntax
+\newcommand{\cst}[1]{\syntax{\cstsym(}#1\syntax{)}}
+\newcommand{\add}[2]{#1\:\syntax{\addsym}\: #2}
+\newcommand{\ifnz}[3]{\syntax{\ifnzsym\;(}#1\syntax{)\:} #2 \syntax{\:else\:} #3}
+\newcommand{\var}[1]{\syntax{\varsym(}#1\syntax{)}}
+\newcommand{\asgn}[2]{#1\syntax{\;\asgnsym\;}#2}
+\newcommand{\skp}{\syntax{skip}}
+\newcommand{\seq}[2]{#1 \syntax{;} #2}
+% introduction
+\newcommand{\cstI}[1]{\intro{\cstsym(}#1\introcolor{)}}
+\newcommand{\addI}[2]{#1\:\intro{\addsym}\: #2}
+\newcommand{\ifnzI}[3]{\intro{\ifnzsym\;(}#1\introcolor{)\:} #2 \introcolor{\:else\:} #3}
+\newcommand{\varI}[1]{\intro{\varsym(}#1\introcolor{)}}
+\newcommand{\asgnI}[2]{#1\intro{\;\asgnsym\;}#2}
+% eliminiation
+\newcommand{\cstE}[1]{\elim{\cstsym(}#1\elimcolor{)}}
+\newcommand{\addE}[2]{#1\:\elim{\addsym}\: #2}
+\newcommand{\ifnzE}[3]{\elim{\ifnzsym\;(}#1\elimcolor{)\:} #2 \elimcolor{\:else\:} #3}
+\newcommand{\varE}[1]{\elim{\varsym(}#1\elimcolor{)}}
+\newcommand{\asgnE}[2]{#1\elim{\;\asgnsym\;}#2}
+
+% abstract domain operators
+\newcommand{\joinsym}{\sqcup}
+\newcommand{\joinLsym}{\lowering{\joinsym}}
+\newcommand{\assumesym}{assume}
+\newcommand{\assumensym}{{\assumesym}n}
+\newcommand{\assumeLsym}{\lowering{\assumesym}}
+\newcommand{\assumenLsym}{\lowering{\assumensym}}
+\newcommand{\joinfmt}[3]{#1\;#2\;#3}
+\newcommand{\joinL}[2]{\joinfmt{#1}{\joinLsym}{#2}}
+\newcommand{\assumefmt}[3]{#1 \loweringcolor{(}#2\loweringcolor{)} #3}
+\newcommand{\assumeL}[2]{\assumefmt{\assumeLsym}{#1}{#2}}
+\newcommand{\assumenL}[2]{\assumefmt{\assumenLsym}{#1}{#2}}
+
+% extraneous
+\newcommand{\tuple}[2]{\left\langle #1, #2 \right\rangle}
+\newcommand{\absval}{\mathscr{d}}
+\newcommand{\absstore}{\sigma}
+
+\newcommand{\effect}[1]{\backslash \left\langle #1 \right\rangle}
+
+\newcommand{\metalet}[3]{\meta{let} #1 \:\meta{=}\: #2 \meta{ in } #3}
+
+\newcommand{\rec}{\texttt{rec}}
