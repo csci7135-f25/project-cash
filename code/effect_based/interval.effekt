@@ -389,5 +389,17 @@ namespace test {
       m.foreach { (k,v) => inspect(k); inspect(v)}
       println("------------")
     }
+
+    val whileJson: String = filesystem::readFile("pylang/tests/testIntervalWhile.json")
+    feed(whileJson) {
+      with scanner[Char]
+      val (_, jsonVal) = build { decodeJson() }
+      val whileExpr = pythonAstToProg(jsonVal)
+      val (_, s) = run(whileExpr, St(init))
+      val m = s match {case St(a) => a}
+      println("--while ex--")
+      m.foreach { (k,v) => inspect(k); inspect(v)}
+      println("------------")
+    }
   }
 }

@@ -1,0 +1,106 @@
+{
+  "type": "Module",
+  "body": [
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "Name",
+        "id": "y",
+        "ctx": {
+          "type": "Load"
+        }
+      },
+      "type_comment": null
+    },
+    {
+      "type": "While",
+      "test": {
+        "type": "Compare",
+        "left": {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Load"
+          }
+        },
+        "ops": [
+          {
+            "type": "Lt"
+          }
+        ],
+        "comparators": [
+          {
+            "type": "Constant",
+            "value": 10,
+            "kind": null
+          }
+        ]
+      },
+      "body": [
+        {
+          "type": "Expr",
+          "value": {
+            "type": "BinOp",
+            "left": {
+              "type": "Name",
+              "id": "x",
+              "ctx": {
+                "type": "Load"
+              }
+            },
+            "op": {
+              "type": "Add"
+            },
+            "right": {
+              "type": "Constant",
+              "value": 1,
+              "kind": null
+            }
+          }
+        }
+      ],
+      "orelse": []
+    },
+    {
+      "type": "Assign",
+      "targets": [
+        {
+          "type": "Name",
+          "id": "y",
+          "ctx": {
+            "type": "Store"
+          }
+        }
+      ],
+      "value": {
+        "type": "BinOp",
+        "left": {
+          "type": "Name",
+          "id": "x",
+          "ctx": {
+            "type": "Load"
+          }
+        },
+        "op": {
+          "type": "Add"
+        },
+        "right": {
+          "type": "Constant",
+          "value": 1,
+          "kind": null
+        }
+      },
+      "type_comment": null
+    }
+  ],
+  "type_ignores": []
+}
