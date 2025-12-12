@@ -151,3 +151,15 @@ vite.config.ts.timestamp-*
 
 
 code/typeclass_cps_based/.lake
+
+.vscode/*
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+*.aux
